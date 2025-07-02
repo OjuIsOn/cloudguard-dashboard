@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { connectDB } from "@/lib/db"
 import { User } from "../../../../models/user"
-import { loginSchema } from "@/lib/validation"
+// import { loginSchema } from "@/lib/validation"
 
 export async function POST(req: Request) {
   try {
@@ -51,10 +51,10 @@ export async function POST(req: Request) {
     })
 
     return res
-  } catch (error: any) {
-    console.error("Login error:", error.message, error.stack)
+  } catch (error) {
+    console.error("Login error:", error)
     return NextResponse.json(
-      { error: "An unexpected error occurred", details: error.message },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }

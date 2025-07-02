@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { appSchema } from "@/lib/validation";
+// import { appSchema } from "@/lib/validation";
 import { App } from "@/models/app";
 import { getUserFromToken } from "@/lib/auth"; // custom JWT utility
 import { NextResponse } from "next/server";
@@ -21,10 +21,8 @@ export async function POST(req: Request) {
 
     const { name, subscriptionId, resourceGroup, appServiceName, budget } = body;
 
-    console.log(body)
+    // console.log(body)
     const existing = await App.findOne({ name, userId: user.id });
-    
-    console.log(existing,":adfka")
 
     if (existing) {
       return NextResponse.json(
@@ -56,11 +54,12 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error creating app:", error);
     return NextResponse.json(
-      { success: false, message: error },
+      { success: false, message: String(error) },
       { status: 500 }
     );
   }
 }
+// ...existing code...
 
 // GET /api/apps → Fetch all apps for current user
 export async function GET(req: Request) {

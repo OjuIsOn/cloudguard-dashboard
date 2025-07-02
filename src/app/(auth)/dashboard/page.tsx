@@ -32,7 +32,14 @@ export default function Dashboard() {
         {apps.length === 0 ? (
           <p>No apps found.</p>
         ) : (
-          apps.map((app: any) => <AppCard key={app._id} app={app} />)
+          apps.map((app: {
+            _id: string;
+            name: string;
+            budget: number;
+            appServiceName: string;
+            resourceGroup: string;
+            subscriptionId: string;
+          }) => <AppCard key={app._id} app={app} />)
         )}
       </div>
     </div>

@@ -1,6 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function AppCard({ app }: { app: any }) {
+export interface AppCardProps {
+  app: {
+    _id: string;
+    name: string;
+    budget: number;
+    appServiceName: string;
+    resourceGroup: string;
+    subscriptionId: string;
+  };
+}
+
+export function AppCard({ app }: AppCardProps) {
   return (
     <Card>
       <CardHeader>

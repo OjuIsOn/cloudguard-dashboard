@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
-import { set } from 'mongoose';
+
 
 export default function LoginForm() {
   const [isClient, setIsClient] = useState(false);
@@ -44,8 +44,12 @@ export default function LoginForm() {
         throw new Error(errorData.message || 'Login failed! Invalid email or password');
       }
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || 'An error occurred during login');
+      } else {
+        setError('An error occurred during login');
+      }
     } finally {
       setIsLoading(false);
     }

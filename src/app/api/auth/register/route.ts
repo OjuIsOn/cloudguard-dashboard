@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { connectDB } from "@/lib/db"
 import { User } from "../../../../models/user"
-import { registerSchema } from "@/lib/validation"
+// import { registerSchema } from "@/lib/validation"
 import jwt from "jsonwebtoken"
 
 export async function POST(req: Request) {

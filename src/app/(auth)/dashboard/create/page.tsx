@@ -2,17 +2,16 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { appSchema, loginSchema } from '@/lib/validation'
+import { appSchema } from '@/lib/validation'
 import { Label } from '@radix-ui/react-label'
-import { errors } from 'jose'
-import { Link } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Checkbox } from '@/components/ui/checkbox'
 
-export default function page() {
+export default function CreateAppPage() {
     const [isClient, setIsClient] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +23,7 @@ export default function page() {
         defaultValues: {
             status: false,
         },
-    });;
+    });
     const router = useRouter();
 
     useEffect(() => {
@@ -50,8 +49,8 @@ export default function page() {
                 throw new Error(errorData.message || 'Creation Failed! Enter valid details')
             }
             router.push("/dashboard")
-        } catch (error: any) {
-            setError(error || "Something went wrong on the server side")
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Something went wrong on the server side")
         } finally {
             setIsLoading(false);
         }
