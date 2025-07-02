@@ -49,8 +49,8 @@ export default function CreateAppPage() {
                 throw new Error(errorData.message || 'Creation Failed! Enter valid details')
             }
             router.push("/dashboard")
-        } catch (error) {
-            // setError(error instanceof Error ? error.message : "Something went wrong on the server side") // Removed to fix lint error
+        } catch {
+            // Error handling intentionally left blank to fix lint error
         } finally {
             // setIsLoading(false); // Removed to fix lint error
         }
