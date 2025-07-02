@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 // ...existing code...
 
 // GET /api/apps → Fetch all apps for current user
-export async function GET(req: Request) {
+export async function GET() {
   await connectDB();
 
   try {

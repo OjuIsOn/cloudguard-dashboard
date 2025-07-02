@@ -13,13 +13,9 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
   const [isClient, setIsClient] = useState(false);
-  const { register,
-    handleSubmit,
-    control,
-    formState: { errors }
-  } = useForm<z.infer<typeof loginSchema>>();
+  const { handleSubmit, control, formState: { errors } } = useForm<z.infer<typeof loginSchema>>();
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false); // Not used, so removed to fix lint error
   const router = useRouter();
 
   useEffect(() => {
@@ -27,7 +23,7 @@ export default function LoginForm() {
   }, []);
 
   const handleOnSubmit = async (data: z.infer<typeof loginSchema>) => {
-    setIsLoading(true);
+    // setIsLoading(true); // Removed to fix lint error
     setError(null);
 
     try {
@@ -51,7 +47,7 @@ export default function LoginForm() {
         setError('An error occurred during login');
       }
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false); // Removed to fix lint error
     }
   };
 

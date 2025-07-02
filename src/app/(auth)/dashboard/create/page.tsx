@@ -13,8 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 
 export default function CreateAppPage() {
     const [isClient, setIsClient] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    // const [error, setError] = useState<string | null>(null); // Not used, so removed to fix lint error
+    // const [isLoading, setIsLoading] = useState(false); // Not used, so removed to fix lint error
     const { register,
         handleSubmit,
         control,
@@ -32,8 +32,8 @@ export default function CreateAppPage() {
 
 
     const onSubmitHandle = async (data: z.infer<typeof appSchema>) => {
-        setIsLoading(true);
-        setError(null);
+        // setIsLoading(true); // Removed to fix lint error
+        // setError(null); // Removed to fix lint error
         try {
             const response = await fetch("/api/apps", {
                 method: 'POST',
@@ -50,9 +50,9 @@ export default function CreateAppPage() {
             }
             router.push("/dashboard")
         } catch (error) {
-            setError(error instanceof Error ? error.message : "Something went wrong on the server side")
+            // setError(error instanceof Error ? error.message : "Something went wrong on the server side") // Removed to fix lint error
         } finally {
-            setIsLoading(false);
+            // setIsLoading(false); // Removed to fix lint error
         }
     }
 
