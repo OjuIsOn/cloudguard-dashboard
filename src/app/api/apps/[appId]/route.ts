@@ -9,7 +9,7 @@ type Params = {
   };
 };
 
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }) {
   const { appId } = params;
 
   // Optional: Read query params if needed
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   });
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }) {
   const { appId } = params;
 
   try {
