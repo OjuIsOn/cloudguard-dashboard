@@ -8,7 +8,8 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Lottie from 'lottie-react';
 import loader from "../../../../../../public/animations/loader.json"
-export function Page() {
+
+export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string | null>(null);
   const { appId } = useParams();
@@ -179,5 +180,3 @@ export function Page() {
 
   );
 }
-
-export default Page;
