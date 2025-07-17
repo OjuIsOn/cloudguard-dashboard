@@ -5,13 +5,13 @@ import { App } from "@/models/app";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { appId: string } }
+  request: NextRequest,
+  context: { params: { appId: string } }
 ) {
   await connectDB();
 
   try {
-    const { appId } =await params;
+    const { appId } = context.params;
 
     const app = await App.findById(appId);
     if (!app) {
