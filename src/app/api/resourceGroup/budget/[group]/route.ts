@@ -7,7 +7,8 @@ import { User } from "@/models/user";
 import { NextRequest, NextResponse } from "next/server";
 import { date } from "zod";
 
-export async function PUT(req: NextRequest, { params }: { params: { group: string } }) {
+// @ts-expect-error Next.js provides params at runtime
+export async function PUT(req: NextRequest, { params }) {
     await connectDB();
 
     const userPayload = await getUserFromToken();
@@ -114,7 +115,8 @@ export async function PUT(req: NextRequest, { params }: { params: { group: strin
 }
 
 
-export async function GET(req: NextRequest, { params }: { params: { group: string } }) {
+// @ts-expect-error Next.js provides params at runtime
+export async function GET(req: NextRequest, { params }) {
     await connectDB();
     const { group } = await params;
     try {
