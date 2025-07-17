@@ -1,33 +1,42 @@
+// src/app/api/apps/[appId]/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { App } from '@/models/app';
 
-// GET handler for /api/monitor/[appId]
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { appId: string } }
-) {
+// Define the shape of the context object
+type Params = {
+  params: {
+    appId: string;
+  };
+};
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const { appId } = params;
+
+  // Optional: Read query params if needed
+  const searchParams = req.nextUrl.searchParams;
+  const category = searchParams.get('category');
+
+  // Return a JSON response
+  return NextResponse.json({
+    message: 'GET request received',
+    appId,
+    category,
+  });
+}
+
+export async function POST(req: NextRequest, { params }: Params) {
+  const { appId } = params;
+
   try {
-    await connectDB(); // Connect to MongoDB
+    const body = await req.json();
 
-    const app = await App.findById(params.appId); // Find app by ID
-
-    if (!app) {
-      return NextResponse.json(
-        { success: false, message: 'App not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { success: true, data: app },
-      { status: 200 }
-    );
+    // Example: Do something with the data
+    return NextResponse.json({
+      message: 'POST request received',
+      appId,
+      data: body,
+    });
   } catch (error) {
-    console.error('GET /api/monitor/[appId] error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to fetch app' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 }
