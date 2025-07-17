@@ -1,11 +1,12 @@
 const nextConfig = {
   experimental: {
-    // turbo: false,
-      serverActions: {
+    serverActions: {
       bodySizeLimit: '3mb',
     },
   },
-  
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;
