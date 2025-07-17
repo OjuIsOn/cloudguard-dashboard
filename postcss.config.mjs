@@ -1,9 +1,18 @@
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
+// import tailwindcss from 'tailwindcss';
+// import autoprefixer from 'autoprefixer';
 
+// export default {
+//   plugins: [
+//     tailwindcss,
+//     autoprefixer,
+//   ],
+// };
+
+// postcss.config.mjs
 export default {
-  plugins: [
-    tailwindcss,
-    autoprefixer,
-  ],
-};
+  plugins: {
+    // ✅ Use the package name as the key, not require()
+    'tailwindcss': {},
+    'autoprefixer': {}
+  }
+}
