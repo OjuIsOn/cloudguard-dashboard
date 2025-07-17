@@ -32,46 +32,59 @@ export async function PUT(req: NextRequest, { params }) {
     const subscriptionId = resource.subscriptionId;
     const resourceGroup = resource.name;
     const budgetName = `budget-${resourceGroup}`;
-    
-    
+
+
     // 3. If auto-shutdown is enabled, create/update the Action Group
-    const webhookUri = `https://${process.env.NEXT_PUBLIC_APP_BASE_URL}/api/budget-exceeded?authKey=${process.env.BUDGET_WEBHOOK_KEY}`;
+    const webhookUri = `https://${process.env.NEXT_PUBLIC_APP_BASE_URL}/api/resourceGroup/budget-exceed?authKey=${process.env.BUDGET_WEBHOOK_KEY}`;
     let actionGroupId: string | undefined;
     if (autoShut) {
         actionGroupId = await upsertActionGroup(
             user.azure.accessToken,
             subscriptionId,
             resourceGroup,
-            webhookUri
+            {
+
+                notifications: {
+                    webhook: [
+                        {
+                            name: 'budgetExceededWebhook',
+                            uri: webhookUri,
+                            commonAlertSchema: true,
+                        },
+                    ],
+                    // you can optionally add email receivers here:
+                    // email: [{ name: 'ops', address: user.email }]
+                },
+            }
         );
     }
-    
+
     console.log(autoShut)
     // 4. Build your budgetPayload, including actionGroups if you have one
     const now = new Date();
 
     const startDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
     const endDate = `${now.getUTCFullYear() + 1}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
-  
 
-  const budgetPayload: any = {
-    properties: {
-      category: "Cost",
-      amount: Number(amount ?? 1000),
-      timeGrain: "Monthly",
-      timePeriod: { startDate, endDate },
-      notifications: {
-        budgetBreach: {
-          enabled: true,
-          operator: "GreaterThan",
-          threshold: Number(threshold ?? 100),
-          contactEmails: [user.email],
-          webhookNotification: { serviceUri: webhookUri, properties: { authKey: process.env.BUDGET_WEBHOOK_KEY! } },
-          ...(actionGroupId ? { actionGroups: [actionGroupId] } : {})
+
+    const budgetPayload: any = {
+        properties: {
+            category: "Cost",
+            amount: Number(amount ?? 1000),
+            timeGrain: "Monthly",
+            timePeriod: { startDate, endDate },
+            notifications: {
+                budgetBreach: {
+                    enabled: true,
+                    operator: "GreaterThan",
+                    threshold: Number(threshold ?? 100),
+                    contactEmails: [user.email],
+                    webhookNotification: { serviceUri: webhookUri, properties: { authKey: process.env.BUDGET_WEBHOOK_KEY! } },
+                    ...(actionGroupId ? { actionGroups: [actionGroupId] } : {})
+                }
+            }
         }
-      }
-    }
-  };
+    };
 
 
     const url = `https://management.azure.com/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Consumption/budgets/${budgetName}?api-version=2023-03-01`;
@@ -96,13 +109,13 @@ export async function PUT(req: NextRequest, { params }) {
                 error: budgetData
             }, { status: 500 });
         }
-        const res=await ResourceGroup.findByIdAndUpdate(resource._id,{
-            budget:amount,
-            autoStop:autoShut
+        const res = await ResourceGroup.findByIdAndUpdate(resource._id, {
+            budget: amount,
+            autoStop: autoShut
         })
 
-        if(!res) return NextResponse.json({success:false,message:"couldn't update the database"})
-            
+        if (!res) return NextResponse.json({ success: false, message: "couldn't update the database" })
+
         return NextResponse.json({ success: true, data: budgetData }, { status: 200 });
 
     } catch (error) {

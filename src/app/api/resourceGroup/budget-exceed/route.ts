@@ -5,6 +5,7 @@ import { Subscription } from '@/models/subscription';
 import { User } from '@/models/user';
 import { App as AppModel } from '@/models/app';  // adjust import to your App schema
 import { ResourceGroup } from '@/models/resourceGroup';
+import { getUserFromToken } from '@/lib/auth';
 // import { sendAlertEmail } from '@/lib/email/sendAlertEmail';
 
 export async function POST(req: NextRequest) {
@@ -42,7 +43,12 @@ export async function POST(req: NextRequest) {
     if (!resourceSettings) {
         return NextResponse.json({ success: false, message: 'Resource group not tracked' }, { status: 404 });
     }
-    const user = await User.findById(subDoc.userId);
+    if (!subDoc?.userId) {
+        return NextResponse.json({ success: false, message: 'User not authenticated' }, { status: 401 });
+    }
+
+    const user = await User.findOne({ _id: subDoc.userId });
+    
     if (!user?.email) {
         return NextResponse.json({ success: false, message: 'User email not set' }, { status: 500 });
     }
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest) {
         //     to: user.email,
         //     resourceGroup,
         // });
-        return NextResponse.json({ success: true, message:"auto shutdown is turned off" });
+        return NextResponse.json({ success: true, message: "auto shutdown is turned off" });
     }
 
     // 4) If autoStop is disabled, just email and return
@@ -71,7 +77,7 @@ export async function POST(req: NextRequest) {
     const origin = url.origin;
     await Promise.all(
         apps.map(app =>
-            fetch(`${origin}/api/webapp/${app._id}`, {
+            fetch(`${origin}/api/monitor/${app._id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'stop' })
