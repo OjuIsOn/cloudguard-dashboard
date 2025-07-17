@@ -119,7 +119,13 @@ export default function Dashboard() {
       </div>
         
       <div className="flex">
-          <VisxPieChart coins={apps}/>
+          <VisxPieChart
+            coins={apps.map(app => ({
+              ...app,
+              createdAt: app.createdAt ? new Date(app.createdAt) : new Date(),
+              updatedAt: app.updatedAt ? new Date(app.updatedAt) : new Date(),
+            })) as any}
+          />
       <div className="flex-1 space-y-8">
           {Object.entries(appsByGroup).map(([group, groupApps]) => (
             <div key={group} className="border rounded-lg p-4 shadow-sm">
