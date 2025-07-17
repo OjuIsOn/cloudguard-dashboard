@@ -2,12 +2,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface AppCardProps {
   app: {
-    _id: string;
-    name: string;
-    budget: number;
-    appServiceName: string;
-    resourceGroup: string;
-    subscriptionId: string;
+    _id?: string;
+  userId: string;
+  subscriptionId: string;
+  resourceGroup: string;
+  appServiceName: string;
+
+  name: string;
+  budget: number;
+  AppName?: string;
+
+  cost?: number;
+  autoStop?: boolean;
+  lastSynced?: string; 
+
+  isDraft?: boolean;
+  createdAt?: string; 
+  updatedAt?: string; 
   };
 }
 

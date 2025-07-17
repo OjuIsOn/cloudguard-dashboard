@@ -119,10 +119,10 @@ export default function LoginForm() {
                   {errors.password.message}
                 </p>)}
               </div>
-            </div>
             <Button type="submit" className="w-full">
               Login
             </Button>
+            </div>
           </form>
         </CardContent>
 

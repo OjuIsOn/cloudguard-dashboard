@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@tailwind utilities;
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -118,5 +120,59 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+@layer utilities {
+  .glow-tech {
+    text-shadow: 0 0 4px rgba(255,255,255,0.2), 0 0 8px rgba(0,255,255,0.5), 0 0 20px rgba(0,255,255,0.2);
+  }
+
+  .glow-red {
+    text-shadow: 0 0 2px #ff0000, 0 0 6px #ff4444, 0 0 12px #ff2222;
+  }
+
+  .glow-green {
+    text-shadow: 0 0 2px #00ff00, 0 0 6px #44ff44, 0 0 12px #22ff22;
+  }
+
+  .scanline {
+    background-image: repeating-linear-gradient(to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px);
+    background-size: 100% 4px;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    10% { opacity: 0.8; }
+    20% { opacity: 0.6; }
+    30% { opacity: 0.9; }
+    50% { opacity: 0.7; }
+    70% { opacity: 0.85; }
+    90% { opacity: 0.6; }
+  }
+
+  .animate-flicker {
+    animation: flicker 2s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      text-shadow: 0 0 8px rgba(255, 255, 0, 0.8);
+    }
+    50% {
+      text-shadow: 0 0 16px rgba(255, 255, 0, 1);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 1.5s infinite;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(5px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out forwards;
   }
 }

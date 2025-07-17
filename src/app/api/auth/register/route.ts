@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { email, password } = body
+    const { email, password, name, clientId, clientSecret, tenantId } = body
 
     const existingUser = await User.findOne({ email })
 
@@ -49,7 +49,17 @@ export async function POST(req: Request) {
 
     // New user registration
     const hashed = await bcrypt.hash(password, 10)
-    const newUser = await User.create({ email, password: hashed })
+    const newUser = await User.create({
+      email,
+      password: hashed,
+      name,
+      accountCredentials: {
+        clientId,
+        clientSecret,
+        tenantId,
+      }
+    });
+
 
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },

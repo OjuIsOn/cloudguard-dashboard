@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    const { name, subscriptionId, resourceGroup, appServiceName, budget } = body;
+    const { name, subscriptionId, resourceGroup, appServiceName, budget, } = body;
 
     // console.log(body)
     const existing = await App.findOne({ name, userId: user.id });
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
       appServiceName,
       budget,
       userId: user.id,
+      
     });
 
     return NextResponse.json(

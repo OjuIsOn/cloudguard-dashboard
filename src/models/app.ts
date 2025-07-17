@@ -1,19 +1,23 @@
 import mongoose, { Schema, InferSchemaType, model } from "mongoose"
+import { string } from "zod"
 
 
 const AppSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    name: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     subscriptionId: { type: String, required: true },
     resourceGroup: { type: String, required: true },
     appServiceName: { type: String, required: true },
+
+    name: { type: String, required: true },
     budget: { type: Number, required: true },
-    currentCost: { type: Number, default: 0 },
-    status: {
-      type: Boolean,
-      default: false,
-    },
+    AppName:{type: String, default:""},
+
+    cost: { type: Number, default: 0 },
+    autoStop: { type: Boolean, default: false },
+    lastSynced: { type: Date },
+
+    isDraft: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
