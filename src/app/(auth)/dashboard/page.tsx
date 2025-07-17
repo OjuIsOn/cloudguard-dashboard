@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { AppCard } from "@/components/app-card"; // we'll make this
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -40,7 +40,8 @@ interface AppData {
 
 
 
-export default function Dashboard() {
+
+function DashboardContent() {
   const [apps, setApps] = useState<AppData[] | []>([]);
   const [loading, setLoading] = useState(true);
   const [linked, setLinked] = useState(false);
@@ -61,10 +62,8 @@ export default function Dashboard() {
     }
   },[])
 
-
   const handleSync=async ()=>{
     setLoading(true);
-    
     const res=await fetch('/api/auth/azure/sync',{
       method:'POST'
     }).then(res=>res.json).then(data=>{
@@ -73,8 +72,6 @@ export default function Dashboard() {
     })
     .catch(error=>console.log(error));
     setLoading(false);
-    
-    
   }
 
   useEffect(() => {
@@ -88,15 +85,12 @@ export default function Dashboard() {
 
   if (loading) return <p className="p-4">Loading apps...</p>;
 
-
-    // Group apps by resourceGroup
+  // Group apps by resourceGroup
   const appsByGroup: { [key: string]: AppData[] } = apps.reduce((acc, app) => {
     if (!acc[app.resourceGroup]) acc[app.resourceGroup] = [];
     acc[app.resourceGroup].push(app);
     return acc;
   }, {} as { [key: string]: AppData[] });
-
-  
 
   return (
     <div className="p-6 space-y-6">
@@ -110,23 +104,17 @@ export default function Dashboard() {
             Connect Azure Account
           </Button>
         </a>)}
-
-        
         <Button onClick={handleSync}>Get Subs</Button>
-       
-
-
       </div>
-        
       <div className="flex">
-          <VisxPieChart
-            coins={apps.map(app => ({
-              ...app,
-              createdAt: app.createdAt ? new Date(app.createdAt) : new Date(),
-              updatedAt: app.updatedAt ? new Date(app.updatedAt) : new Date(),
-            })) as any}
-          />
-      <div className="flex-1 space-y-8">
+        <VisxPieChart
+          coins={apps.map(app => ({
+            ...app,
+            createdAt: app.createdAt ? new Date(app.createdAt) : new Date(),
+            updatedAt: app.updatedAt ? new Date(app.updatedAt) : new Date(),
+          })) as any}
+        />
+        <div className="flex-1 space-y-8">
           {Object.entries(appsByGroup).map(([group, groupApps]) => (
             <div key={group} className="border rounded-lg p-4 shadow-sm">
               <Link href={`/resourceGroup/${group}`}>
@@ -141,7 +129,6 @@ export default function Dashboard() {
                     : app.isDraft
                       ? `/dashboard/deploy/${app._id}`
                       : `/dashboard/deploy/${app._id}/prepare`;
-
                   return (
                     <Link href={appLink} key={app._id}>
                       <AppCard app={app} />
@@ -154,6 +141,14 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
 
