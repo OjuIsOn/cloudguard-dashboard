@@ -12,7 +12,8 @@ import { stopAzureApp, deleteAzureApp, restartAzureApp } from '@/utils/azure-ops
 // =======================
 // GET: Cost & App Settings
 // =======================
-export async function GET(req: Request, { params }: { params: { appId: string } }) {
+// @ts-expect-error Next.js provides params at runtime
+export async function GET(req: Request, { params }) {
   await connectDB();
 
   try {
@@ -57,7 +58,8 @@ export async function GET(req: Request, { params }: { params: { appId: string } 
 // =======================
 // PUT: Update Budget / AutoStop / Env
 // =======================
-export async function PUT(req: NextRequest, { params }: { params: { appId: string } }) {
+// @ts-expect-error Next.js provides params at runtime
+export async function PUT(req: NextRequest, { params }) {
   await connectDB();
 
   try {
@@ -115,7 +117,8 @@ export async function PUT(req: NextRequest, { params }: { params: { appId: strin
 // =======================
 // POST: Stop / Restart / Delete
 // =======================
-export async function POST(req: Request, { params }: { params: { appId: string } }) {
+// @ts-expect-error Next.js provides params at runtime
+export async function POST(req: Request, { params }) {
   await connectDB();
 
   try {

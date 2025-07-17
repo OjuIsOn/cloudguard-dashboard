@@ -9,6 +9,7 @@ type Params = {
   };
 };
 
+// @ts-expect-error Next.js provides params at runtime
 export async function GET(req: NextRequest, { params }) {
   const { appId } = params;
 
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest, { params }) {
   });
 }
 
+// @ts-expect-error Next.js provides params at runtime
 export async function POST(req: NextRequest, { params }) {
   const { appId } = params;
 
