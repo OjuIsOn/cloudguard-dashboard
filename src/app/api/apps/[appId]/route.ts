@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server';
 import { connectDB } from "@/lib/db";
 import { App } from "@/models/app";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { appId: string } }
-) {
+export async function GET(request: Request, context: any) {
   try {
     await connectDB();
-    const app = await App.findById(params.appId);
+    const app = await App.findById(context.params.appId);
     
     if (!app) {
       return NextResponse.json(
