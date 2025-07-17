@@ -1,15 +1,12 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { App } from "@/models/app";
 
-type Context = {
-  params: {
-    appId: string;
-  };
-};
-
-export async function GET(request: NextRequest, context: Context): Promise<NextResponse> {
+export async function GET(
+  request: NextRequest,
+  context: { params: { appId: string } }
+): Promise<NextResponse> {
   try {
     await connectDB();
     const app = await App.findById(context.params.appId);
