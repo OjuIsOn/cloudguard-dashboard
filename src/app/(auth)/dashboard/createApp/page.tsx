@@ -240,24 +240,16 @@ export default function CreateAppPage() {
             </div>
             <div>
 
-                {showCreateRG
-                    && (
-                        <Card className="w-full max-w-sm">
-                            <CardHeader>
-                                <CardTitle>Create new Resource group</CardTitle>
-                                <CardDescription>
-                                    Enter the details for creating new Resource group
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <CreateResourceGroup
-                                    existingNames={resourceGroups}
-                                    onCreateSuccess={handleRGCreate}
-                                />
-                            </CardContent>
-
-                        </Card>
-                    )}
+                {showCreateRG && (
+                    <Card className="w-full max-w-sm">
+                        <CardHeader>
+                            <CardTitle>Create new Resource group</CardTitle>
+                            <CardDescription>
+                                Resource group creation form coming soon.
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                )}
 
             </div>
         </div>
