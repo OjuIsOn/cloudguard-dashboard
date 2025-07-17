@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/adm-zip": "^0.5.7",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
