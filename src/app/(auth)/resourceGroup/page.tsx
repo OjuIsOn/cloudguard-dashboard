@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 const resourceGroupSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -15,12 +16,9 @@ const resourceGroupSchema = z.object({
 
 type ResourceGroupForm = z.infer<typeof resourceGroupSchema>
 
-type Props = {
-  existingNames: string[]
-  onCreateSuccess: (newRG: string) => void
-}
-
-export default function CreateResourceGroup({ existingNames, onCreateSuccess }: Props) {
+export default function ResourceGroupPage() {
+  const [existingNames, setExistingNames] = useState<string[]>([])
+  const router = useRouter()
   const {
     register,
     handleSubmit,
@@ -47,6 +45,20 @@ export default function CreateResourceGroup({ existingNames, onCreateSuccess }: 
     }
   }, [resourceName, existingNames, setError, clearErrors])
 
+  useEffect(() => {
+    // Fetch existing resource group names when component mounts
+    fetch("/api/resourceGroup")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setExistingNames(data.resourceGroups || [])
+        }
+      })
+      .catch(() => {
+        toast.error("Failed to fetch existing resource groups")
+      })
+  }, [])
+
   const onSubmit = async (data: ResourceGroupForm) => {
     try {
       const res = await fetch("/api/resourceGroup", {
@@ -59,7 +71,8 @@ export default function CreateResourceGroup({ existingNames, onCreateSuccess }: 
       const json = await res.json()
 
       if (json.success) {
-        onCreateSuccess(data.resourceGroup)
+        toast.success("Resource group created successfully")
+        router.push('/dashboard') // or wherever you want to redirect after success
       } else {
         toast.error(json.message || "Failed to create resource group")
       }
