@@ -4,14 +4,20 @@ import { connectDB } from "@/lib/db";
 import { App } from "@/models/app";
 import { NextRequest, NextResponse } from "next/server";
 
+type Context = {
+  params: {
+    appId: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  context: { params: { appId: string } }
+  { params }: Context
 ) {
   await connectDB();
 
   try {
-    const { appId } = context.params;
+    const { appId } = params;
 
     const app = await App.findById(appId);
     if (!app) {
