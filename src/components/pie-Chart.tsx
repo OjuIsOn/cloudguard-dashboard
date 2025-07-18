@@ -60,7 +60,7 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
         <Group top={half} left={half}>
           <Pie
             data={chartData}
-            pieValue={(d) => d.budget}
+            pieValue={(d) => typeof d.budget === 'number' ? d.budget : 0}
             outerRadius={half}
             innerRadius={({ data }) =>
               half - (active && active.name === data.name ? 12 : 8)
@@ -98,7 +98,7 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
           {active ? (
             <>
               <Text textAnchor="middle" fill="#fff" fontSize={40} dy="-20">
-                {`₹${Math.floor(active.budget)}`}
+                {`₹${Math.floor(active.budget ?? 0)}`}
               </Text>
               <Text textAnchor="middle" fill={active.color} fontSize={20} dy="20">
                 {`${active.cost} ${active.name}`}
@@ -107,7 +107,7 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
           ) : (
             <>
               <Text textAnchor="middle" fill="#fff" fontSize={40} dy="-20">
-                {`₹${Math.floor(chartData.reduce((s, c) => s + c.budget, 0))}`}
+                {`₹${Math.floor(chartData.reduce((s, c) => s + (c.budget ?? 0), 0))}`}
               </Text>
               <Text textAnchor="middle" fill="#aaa" fontSize={20} dy="20">
                 {`${chartData.length} Resource Groups`}
