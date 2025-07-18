@@ -1,24 +1,30 @@
-'use client'
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AppType } from '@/models/app';
-import { set } from 'mongoose';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Lottie from 'lottie-react';
-import loader from "../../../../../../public/animations/loader.json"
+import loader from "../../../../../../public/animations/loader.json";
 
 export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string | null>(null);
-  const { appId } = useParams();
+
+  // ✅ Corrected appId handling
+  const params = useParams();
+  const appId = Array.isArray(params.appId) ? params.appId[0] : params.appId;
+
   const [appData, setAppData] = useState<AppType | null>(null);
   const [webAppName, setWebAppName] = useState('');
   const [status, setStatus] = useState<'idle' | 'checking' | 'taken' | 'unique' | 'error' | string>('idle');
   const [hostedURL, setHostedURL] = useState('');
   const [appCreateLoading, setAppCreateLoading] = useState(false);
   const router = useRouter();
+
+  // ✅ Web app name availability checker
   useEffect(() => {
     const check = setTimeout(async () => {
       if (webAppName.length > 2) {
@@ -32,7 +38,7 @@ export default function Page() {
           } else {
             setStatus(
               data.message === false &&
-                data.fullMessage === 'Site names only allow alphanumeric characters and hyphens, cannot start or end in a hyphen, and must be less than 64 chars.'
+              data.fullMessage === 'Site names only allow alphanumeric characters and hyphens, cannot start or end in a hyphen, and must be less than 64 chars.'
                 ? 'error'
                 : 'taken'
             );
@@ -48,39 +54,43 @@ export default function Page() {
     return () => clearTimeout(check);
   }, [webAppName]);
 
-  // Fetch app data
+  // ✅ App data fetcher
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/apps/${appId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (!data) throw new Error('No data returned from API');
-        setAppData(data.data);
+    if (!appId) return;
 
-      })
-      .catch((err) => {
-        toast.error("Failed to load app");
-        console.log(err);
-      })
-      .finally(() => setLoading(false));
+    setLoading(true);
+    const fill = async () => {
+      await fetch(`/api/apps/${appId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || !data.data) throw new Error('No data returned from API');
+          setAppData(data.data);
+        })
+        .catch((err) => {
+          toast.error("Failed to load app");
+          console.error(err);
+        })
+        .finally(() => setLoading(false));
+    };
+    fill();
   }, [appId]);
 
   const handleSubmit = async () => {
     try {
-      setAppCreateLoading(true)
+      setAppCreateLoading(true);
       const res = await fetch('/api/auth/azure/create-web-app', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...appData,
-          Appname: webAppName
-        })
+          Appname: webAppName,
+        }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Web app creation failed");
-      setHostedURL(data.hostedUrl)
+
+      setHostedURL(data.hostedUrl);
+
       toast(
         <div className="flex flex-col gap-2">
           <span>✅ New Web App Service has been created successfully!</span>
@@ -91,10 +101,9 @@ export default function Page() {
             Visit Web App
           </button>
         </div>,
-        {
-          duration: 6000, // or however long you want it to stay
-        }
+        { duration: 6000 }
       );
+
       router.push(`/dashboard/deploy/${appId}/prepare`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -102,9 +111,9 @@ export default function Page() {
     }
   };
 
-  if (loading) return <div>Loading....</div>;
+  if (!appId) return <div>Invalid app ID</div>;
+  if (loading) return <div>Loading...</div>;
   if (!appData) return <p className="p-4 text-red-500">App not found</p>;
-  if (!appId) return <div>Invalid app id</div>;
 
   return (
     <div className="p-6 space-y-4 max-w-2xl mx-auto">
@@ -122,45 +131,35 @@ export default function Page() {
       />
 
       {status === 'idle' && (
-        <p className="text-gray-400 animate-fadeIn glow-subtle">
-          Start typing a name...
-        </p>
+        <p className="text-gray-400 animate-fadeIn glow-subtle">Start typing a name...</p>
       )}
-
       {status === 'checking' && (
-        <p className="text-yellow-300 pulse-glow scanline">
-          Scanning availability...
-        </p>
+        <p className="text-yellow-300 pulse-glow scanline">Scanning availability...</p>
       )}
-
       {status === 'taken' && (
-        <p className="text-red-500 glow-red animate-fadeIn scanline">
-          Name is already taken
-        </p>
+        <p className="text-red-500 glow-red animate-fadeIn scanline">Name is already taken</p>
       )}
-
       {status === 'error' && (
         <p className="text-red-400 animate-flicker scanline">
-          System glitch detected!
+          System glitch detected!<br />
           Site names only allow alphanumeric characters and hyphens, cannot start or end in a hyphen, and must be less than 64 chars.
         </p>
       )}
-
       {status === 'unique' && (
-        <p className="text-green-400 glow-green animate-fadeIn scanline">
-          Nice!
-        </p>
+        <p className="text-green-400 glow-green animate-fadeIn scanline">Nice!</p>
       )}
-
-
 
       <Button onClick={handleSubmit} disabled={status !== 'unique'}>
         Create Web Service + Prepare Build
       </Button>
 
       {error && <p className="text-red-600 mt-2">Error: {typeof error === 'string' ? error : error.message}</p>}
-      {hostedURL && (<p className="text-green-400 glow-green animate-fadeIn scanline">
-        Web app service created : {hostedURL}</p>)}
+
+      {hostedURL && (
+        <p className="text-green-400 glow-green animate-fadeIn scanline">
+          Web app service created: {hostedURL}
+        </p>
+      )}
 
       {appCreateLoading && (
         <div className="flex flex-col items-center justify-center gap-4 p-4">
@@ -174,9 +173,6 @@ export default function Page() {
           </p>
         </div>
       )}
-
-
     </div>
-
   );
 }

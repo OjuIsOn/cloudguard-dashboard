@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { App } from "@/models/app";
 import { getUserFromToken } from "@/lib/auth"; // custom JWT utility
 import { NextResponse } from "next/server";
+import { Subscription } from "@/models/subscription";
 
 // POST /api/apps → Create new app
 export async function POST(req: Request) {
@@ -74,7 +75,7 @@ export async function GET() {
         { status: 401 }
       );
     }
-
+  
     const apps = await App.find({ userId: user.id });
 
     return NextResponse.json(

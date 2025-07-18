@@ -1,5 +1,6 @@
 // src/app/api/apps/[appId]/route.ts
 
+import { App } from '@/models/app';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Define the shape of the context object
@@ -11,18 +12,26 @@ type Params = {
 
 // @ts-expect-error Next.js provides params at runtime
 export async function GET(req: NextRequest, { params }) {
-  const { appId } = params;
+  const { appId } = await params;
 
   // Optional: Read query params if needed
   const searchParams = req.nextUrl.searchParams;
   const category = searchParams.get('category');
 
-  // Return a JSON response
-  return NextResponse.json({
-    message: 'GET request received',
-    appId,
-    category,
-  });
+  try {
+    const app = await App.findById(appId);
+
+    // Return a JSON response
+    return NextResponse.json({
+      success: true,
+      data: app
+    });
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      error: error
+    });
+  }
 }
 
 // @ts-expect-error Next.js provides params at runtime

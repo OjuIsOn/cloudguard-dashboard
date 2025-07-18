@@ -25,6 +25,7 @@ export default function MonitorPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/apps/${appId}`);
+      
       // const res = await fetch(`/api/monitor/${appId}`);
       const { success, data } = await res.json();
       if (success && data) {
@@ -32,6 +33,7 @@ export default function MonitorPage() {
         setBudget(data.budget || 0);
         setAutoShut(data.autoStop || false);
         setHostedUrl(`https://${data.AppName}.azurewebsites.net`);
+        
         const currentCost = data.cost;
         const currentBudget = data.budget ?? -1;
         console.log(data)
