@@ -19,8 +19,8 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import CreateResourceGroup from '../../resourceGroup/page'
 import { toast } from 'sonner'
+import ResourceGroupPage from '../../resourceGroup/page'
 
 export default function CreateAppPage() {
     const [isClient, setIsClient] = useState(false)
@@ -179,7 +179,7 @@ export default function CreateAppPage() {
                                         type="button"
                                         className="text-sm text-blue-600 underline mt-1"
                                         onClick={() => setShowCreateRG(!showCreateRG)}
-                                    >
+                                    >   
                                         {showCreateRG ? 'Cancel' : 'Create new resource group'}
                                     </button>
                                 </div>
@@ -238,13 +238,14 @@ export default function CreateAppPage() {
                 </Card>
 
             </div>
-            <div>
+            <div className='w-full max-w-md'>
 
                 {showCreateRG && (
                     <Card className="w-full max-w-sm">
                         <CardHeader>
                             <CardTitle>Create new Resource group</CardTitle>
                             <CardDescription>
+                                <ResourceGroupPage/>
                                 Resource group creation form coming soon.
                             </CardDescription>
                         </CardHeader>

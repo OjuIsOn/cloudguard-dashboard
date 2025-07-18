@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { ResourceGroup } from "@/models/resourceGroup";
 import { Subscription } from "@/models/subscription";
 import { User } from "@/models/user";
+import { SubscriptIcon } from "lucide-react";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -18,11 +19,11 @@ export async function GET(req: Request) {
       { status: 401 }
     );
   }
+  const subscription = await Subscription.findOne({ userId: tokenPayload.id });
 
   try {
-    const resourceGoups = await ResourceGroup.find({ userId: tokenPayload.id });
+    const resourceGoups = await ResourceGroup.find({ subscriptionId: subscription.subscriptionId });
 
-    // Check if empty
     if (!resourceGoups || resourceGoups.length === 0) {
       return NextResponse.json(
         {
@@ -54,17 +55,17 @@ export async function POST(req: Request) {
   if (!userPayload) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
-  
-  const sub = await Subscription.findOne({userId:userPayload.id})
+
+  const sub = await Subscription.findOne({ userId: userPayload.id })
   const user = await User.findById(userPayload.id);
   if (!user || !user.azure || !user.azure.accessToken) {
     return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
   }
 
 
-  const { resourceGroup, location = "centralindia"} = await req.json();
+  const { resourceGroup, location = "centralindia" } = await req.json();
   const accessToken = user.azure.accessToken;
-  const subscriptionId=sub.subscriptionId
+  const subscriptionId = sub.subscriptionId
   try {
     // 1. Create Resource Group in Azure
     const response = await fetch(
@@ -90,7 +91,10 @@ export async function POST(req: Request) {
       name: resourceGroup,
       location,
       subscriptionId,
-      userId: user._id
+      userId: user._id,
+      budget: 100,
+      cost: 0,
+      autoStop: false,
     });
 
     return NextResponse.json({ success: true, data: newGroup }, { status: 201 });

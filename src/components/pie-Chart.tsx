@@ -5,10 +5,10 @@ import { Pie } from '@visx/shape';
 import { Group } from '@visx/group';
 import { Text } from '@visx/text';
 import { animated, useSpring } from '@react-spring/web';
-import { AppType } from '@/models/app';
+import { ResourceType } from '@/models/resourceGroup';
 
-// Extend AppType to include a `color` field
-type ChartApp = AppType & { color: string };
+// Extend ResourceType to include a `color` field
+type ChartApp = ResourceType & { color: string };
 
 // Define a list of colors (you can add more or use a color generator)
 const colorPalette = [
@@ -38,7 +38,7 @@ const colorPalette = [
 const APath = animated('path');
 
 // 👇 Accept props properly
-export default function Home({ coins }: { coins: AppType[] }) {
+export default function Home({ coins }: { coins: ResourceType[] }) {
   const [active, setActive] = useState<ChartApp | null>(null);
   const size = 400;
   const half = size / 2;
@@ -63,7 +63,7 @@ export default function Home({ coins }: { coins: AppType[] }) {
             pieValue={(d) => d.budget}
             outerRadius={half}
             innerRadius={({ data }) =>
-              half - (active && active.AppName === data.AppName ? 12 : 8)
+              half - (active && active.name === data.name ? 12 : 8)
             }
             padAngle={0.02}
           >
@@ -82,7 +82,7 @@ export default function Home({ coins }: { coins: AppType[] }) {
 
                 return (
                   <g
-                    key={arc.data.AppName}
+                    key={arc.data.name}
                     onMouseEnter={() => setActive(arc.data)}
                     onMouseLeave={() => setActive(null)}
                     style={{ cursor: 'pointer' }}
@@ -101,7 +101,7 @@ export default function Home({ coins }: { coins: AppType[] }) {
                 {`₹${Math.floor(active.budget)}`}
               </Text>
               <Text textAnchor="middle" fill={active.color} fontSize={20} dy="20">
-                {`${active.cost} ${active.AppName}`}
+                {`${active.cost} ${active.name}`}
               </Text>
             </>
           ) : (
@@ -110,7 +110,7 @@ export default function Home({ coins }: { coins: AppType[] }) {
                 {`₹${Math.floor(chartData.reduce((s, c) => s + c.budget, 0))}`}
               </Text>
               <Text textAnchor="middle" fill="#aaa" fontSize={20} dy="20">
-                {`${chartData.length} Web Apps`}
+                {`${chartData.length} Resource Groups`}
               </Text>
             </>
           )}
