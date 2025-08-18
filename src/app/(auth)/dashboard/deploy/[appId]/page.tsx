@@ -24,7 +24,6 @@ export default function Page() {
   const [appCreateLoading, setAppCreateLoading] = useState(false);
   const router = useRouter();
 
-  // ✅ Web app name availability checker
   useEffect(() => {
     const check = setTimeout(async () => {
       if (webAppName.length > 2) {
