@@ -23,12 +23,12 @@ export default function DeployPage() {
     const newErrors: string[] = [];
 
     if (appType === 'react') {
-      if (!entries.some(name => name.endsWith('index.html'))) {
-        newErrors.push("Missing index.html (likely not a built folder)");
-      }
-      if (entries.some(name => name.includes("package.json"))) {
-        newErrors.push("Please upload only your built folder (e.g. dist/ or build/), not the entire project.");
-      }
+      // if (!entries.some(name => name.endsWith('index.html'))) {
+      //   newErrors.push("Missing index.html (likely not a built folder)");
+      // }
+      // if (entries.some(name => name.includes("package.json"))) {
+      //   newErrors.push("Please upload only your built folder (e.g. dist/ or build/), not the entire project.");
+      // }
     } else if (appType === 'nodejs') {
       if (!entries.some(name => name.endsWith('package.json'))) {
         newErrors.push("Missing package.json (Node.js app needs it)");
