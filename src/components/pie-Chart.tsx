@@ -82,7 +82,7 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
 
                 return (
                   <g
-                    key={arc.data._id || `${arc.data.name}-${i}`}
+                    key={(arc.data as any)._id || `${arc.data.name}-${i}`}
                     onMouseEnter={() => setActive(arc.data)}
                     onMouseLeave={() => setActive(null)}
                     style={{ cursor: 'pointer' }}
