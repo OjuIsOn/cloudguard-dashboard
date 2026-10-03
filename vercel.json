@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/monitor/check-budgets",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
