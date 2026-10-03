@@ -11,7 +11,7 @@ async function handler() {
     await connectDB();
     
     // Fetch all monitored resource groups
-    const resourceGroups = await resourceGroupRepository.model.find({ autoStop: true });
+    const resourceGroups = await (resourceGroupRepository as any).model.find({ autoStop: true });
     let stoppedCount = 0;
 
     for (const rg of resourceGroups) {
