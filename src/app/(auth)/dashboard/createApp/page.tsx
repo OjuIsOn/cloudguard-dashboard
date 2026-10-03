@@ -144,27 +144,10 @@ export default function CreateAppPage() {
                                     )}
                                 </div>
 
-                                {/* Resource Group Dropdown */}
+                                {/* Resource Group Input */}
                                 <div className="grid gap-2">
-                                    <Label>Resource Group</Label>
-                                    <Controller
-                                        name="resourceGroup"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a resource group" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {resourceGroups.map((rg) => (
-                                                        <SelectItem key={rg} value={rg}>
-                                                            {rg}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                    />
+                                    <Label htmlFor="resourceGroup">Resource Group</Label>
+                                    <Input {...register('resourceGroup')} id="resourceGroup" placeholder="e.g. MyNewResourceGroup" required />
                                     {errors.resourceGroup && (
                                         <p className="text-red-700">{errors.resourceGroup.message}</p>
                                     )}

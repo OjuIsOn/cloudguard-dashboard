@@ -160,7 +160,11 @@ export async function POST(req: Request, { params }) {
       await stopAzureApp({ ...app._doc, accessToken: accessToken });
     } else if (action === 'delete') {
       const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
-      await cloudProvider.deleteApp(app.AppName, app.resourceGroup, app.subscriptionId);
+      try {
+        await cloudProvider.deleteApp(app.AppName, app.resourceGroup, app.subscriptionId);
+      } catch (err: any) {
+        console.warn(`Azure delete failed (likely already deleted): ${err.message}`);
+      }
       await appRepository.delete(appId);
       console.log(`Successfully deleted app ${appId}`);
     } else if (action === 'restart') {

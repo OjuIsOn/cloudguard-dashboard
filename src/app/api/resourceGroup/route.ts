@@ -33,28 +33,19 @@ export async function GET(req: Request) {
     const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
   try {
-    const resourceGoups = await ResourceGroup.find({ subscriptionId: subscription.subscriptionId });
+    const resourceGroups = await ResourceGroup.find({ userId: tokenPayload.id });
 
-    // Fetch actual live Resource Groups from Azure
-    const { CloudProviderFactory } = await import('@/strategies/cloudProvider.factory');
-    const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
-    const azureRGs = await cloudProvider.listResourceGroups(subscription.subscriptionId);
-    const azureRGNames = azureRGs.map((rg: any) => rg.name);
-
-    // Filter DB groups that still exist in Azure
-    const validResourceGroups = resourceGoups.filter((rg) => azureRGNames.includes(rg.name));
-
-    if (!validResourceGroups || validResourceGroups.length === 0) {
+    if (!resourceGroups || resourceGroups.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "No resourceGoups found for this user.",
+          message: "No resourceGroups found for this user.",
         },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: validResourceGroups });
+    return NextResponse.json({ success: true, data: resourceGroups });
   } catch (err) {
     return NextResponse.json(
       {
