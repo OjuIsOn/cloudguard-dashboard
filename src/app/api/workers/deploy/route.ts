@@ -129,7 +129,13 @@ async function handler(req: Request) {
       console.error("Failed to set env vars before deployment:", envResult.error);
     } else {
       // Also save it to the DB so the monitor page sees it
-      app.envVars = { ...app.envVars, ...parsedEnv };
+      let existingEnv = {};
+      try {
+        if (app.envVars) {
+          existingEnv = typeof app.envVars === 'string' ? JSON.parse(app.envVars) : app.envVars;
+        }
+      } catch (e) {}
+      app.envVars = JSON.stringify({ ...existingEnv, ...parsedEnv });
       await app.save();
     }
 
