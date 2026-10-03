@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     }
     
     // Fix: userId should be string matching user.id, not the ObjectId _id
-    const subs = await Subscription.find({ userId: tokenPayload.id })
+    const subs = await Subscription.find({ userId: userPayload.id })
     
     if (!user.azureTokens) {
         return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
