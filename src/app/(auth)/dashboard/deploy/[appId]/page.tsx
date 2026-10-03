@@ -29,7 +29,7 @@ export default function Page() {
       if (webAppName.length > 2) {
         setStatus('checking');
         try {
-          const response = await fetch(`/api/auth/azure/check?name=${webAppName}`);
+          const response = await fetch(`/api/auth/azure/check?name=${webAppName}&subscriptionId=${appData?.subscriptionId}`);
           const data = await response.json();
 
           if (data.success === true && data.message === true) {
