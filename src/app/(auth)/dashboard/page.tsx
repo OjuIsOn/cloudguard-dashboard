@@ -168,8 +168,8 @@ function DashboardContent() {
         />
         <div className="flex-1 space-y-8">
           {Object.entries(appsByGroup).map(([group, groupApps]) => {
-            const rgStatus = resourceGroups.find(rg => rg.name === group)?.status || "Active";
-            const isDeleting = rgStatus === "Deleting";
+            const rgData = resourceGroups.find(rg => rg.name === group) as any;
+            const isDeleting = rgData?.status === "Deleting";
 
             return (
               <div key={group} className={`border rounded-lg p-4 shadow-sm ${isDeleting ? "opacity-60 bg-gray-50 pointer-events-none grayscale" : ""}`}>

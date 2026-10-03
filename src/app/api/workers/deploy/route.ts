@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const maxDuration = 60; // Max execution time for Vercel Hobby Tier
 import { verifySignatureAppRouter } from "@upstash/qstash/dist/nextjs";
 import { CloudProviderFactory } from "@/strategies/cloudProvider.factory";
 import { appRepository } from "@/repositories/app.repository";

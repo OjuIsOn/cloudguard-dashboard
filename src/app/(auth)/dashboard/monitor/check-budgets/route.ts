@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const maxDuration = 60; // Max execution time for Vercel Hobby Tier
 import { connectDB } from '@/lib/db';
 import { App } from '@/models/app';
 import { User } from '@/models/user';
