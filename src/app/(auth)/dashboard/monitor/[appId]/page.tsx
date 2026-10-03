@@ -183,7 +183,17 @@ export default function MonitorPage() {
                 </span>
               )}
             </h2>
-            <p className="text-gray-400 mt-1 capitalize">{deployStatus} Status</p>
+            <div className="text-gray-400 mt-1 flex items-center gap-2">
+              <span className="capitalize">{deployStatus} Status</span>
+              <span>•</span>
+              {hostedUrl ? (
+                <a href={hostedUrl} target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">
+                  {hostedUrl}
+                </a>
+              ) : (
+                <span className="text-gray-500 italic">No URL</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex gap-3">
