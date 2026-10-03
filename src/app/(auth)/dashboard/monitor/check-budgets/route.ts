@@ -17,22 +17,25 @@ export async function GET() {
       if (!app.budget || app.budget === -1) continue;
 
       const user = await User.findById(app.userId);
-      if (!user || !user.azure?.accessToken) continue;
+      if (!user || !user.azureTokens) continue;
+
+      const { decrypt } = await import('@/utils/encryption');
+      const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
       const cost = await getCostEstimate(
         app._id,
         app.subscriptionId,
         app.resourceGroup,
         app.AppName,
-        user.azure.accessToken
+        accessToken
       );
 
-      if (cost > app.budget && app.autoShutdownEnabled) {
+      if (app.hardLimit && cost > app.hardLimit && app.autoStop) {
         const stopResult = await stopAzureApp({
           AppName: app.AppName,
           resourceGroup: app.resourceGroup,
           subscriptionId: app.subscriptionId,
-          accessToken: user.azure.accessToken,
+          accessToken: accessToken,
         });
 
         results.push({

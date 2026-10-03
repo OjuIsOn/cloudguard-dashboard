@@ -10,6 +10,7 @@ const resourceGroupSchema = new mongoose.Schema(
     budget: { type: Number},
     cost: { type: Number, default: 0 },
     autoStop: { type: Boolean, default: false },
+    status: { type: String, default: "Active" }, // e.g. "Active", "Deleting"
   },
   { timestamps: true }
 );

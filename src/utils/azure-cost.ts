@@ -32,7 +32,7 @@ export async function getCostEstimate(
         "name": "ResourceId",
         "operator": "In",
         "values": [
-          "/subscriptions/abc123/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-app"
+          `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Web/sites/${AppName}`
         ]
       }
     }

@@ -76,14 +76,24 @@ function DashboardContent() {
 
   const handleSync=async ()=>{
     setLoading(true);
-    const res=await fetch('/api/auth/azure/sync',{
-      method:'POST'
-    }).then(res=>res.json).then(data=>{
-      console.log(data);
-      toast('successfully synced')
-    })
-    .catch(error=>console.log(error));
-    setLoading(false);
+    try {
+      const res = await fetch('/api/auth/azure/sync', { method: 'POST' });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to sync with Azure');
+      }
+      
+      toast.success('Successfully synced with Azure!');
+      
+      // Refresh the page to show new data
+      window.location.reload();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || 'Error syncing with Azure');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -110,6 +120,17 @@ function DashboardContent() {
     return acc;
   }, {} as { [key: string]: AppData[] });
 
+  // Calculate aggregated budget and cost per Resource Group
+  const rgCoins = Object.entries(appsByGroup).map(([group, groupApps]) => {
+    const totalBudget = groupApps.reduce((sum, app) => sum + (app.budget || 0), 0);
+    const totalCost = groupApps.reduce((sum, app) => sum + (app.cost || 0), 0);
+    return {
+      name: group,
+      budget: totalBudget,
+      cost: totalCost
+    };
+  }).filter(rg => rg.budget > 0);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -117,27 +138,63 @@ function DashboardContent() {
         <Link href="/dashboard/createApp">
           <Button>Create New App</Button>
         </Link>
-        {!linked && (<a href="/api/auth/azure">
-          <Button>
-            Connect Azure Account
-          </Button>
-        </a>)}
+        <Link href="/resourceGroup">
+          <Button variant="outline">Create Resource Group</Button>
+        </Link>
+        {!linked && (
+          <div className="flex gap-2">
+            <Button onClick={() => window.location.href = "/api/auth/azure"}>
+              Connect Azure Account
+            </Button>
+            <Button variant="outline" onClick={() => {
+              const tenantId = prompt(
+                "Enter your Azure Tenant ID:\n\n" +
+                "Use this if the normal login doesn't recognize your email.\n" +
+                "Find it in Azure Portal → search 'Tenant properties' → Tenant ID"
+              );
+              if (tenantId && tenantId.trim()) {
+                window.location.href = `/api/auth/azure?tenantId=${tenantId.trim()}`;
+              }
+            }}>
+              Use Tenant ID
+            </Button>
+          </div>
+        )}
         <Button onClick={handleSync}>Get Subs</Button>
       </div>
       <div className="flex">
         <VisxPieChart
-          coins={resourceGroups.map(app => ({
-            ...app
-          })) as any}
+          coins={rgCoins as any}
         />
         <div className="flex-1 space-y-8">
-          {Object.entries(appsByGroup).map(([group, groupApps]) => (
-            <div key={group} className="border rounded-lg p-4 shadow-sm">
-              <Link href={`/resourceGroup/${group}`}>
-                <h2 className="text-xl font-bold text-blue-600 hover:underline cursor-pointer mb-3">
-                  {group}
-                </h2>
-              </Link>
+          {Object.entries(appsByGroup).map(([group, groupApps]) => {
+            const rgStatus = resourceGroups.find(rg => rg.name === group)?.status || "Active";
+            const isDeleting = rgStatus === "Deleting";
+
+            return (
+              <div key={group} className={`border rounded-lg p-4 shadow-sm ${isDeleting ? "opacity-60 bg-gray-50 pointer-events-none grayscale" : ""}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  {isDeleting ? (
+                    <h2 className="text-xl font-bold text-gray-500">
+                      {group}
+                    </h2>
+                  ) : (
+                    <Link href={`/resourceGroup/${group}`}>
+                      <h2 className="text-xl font-bold text-blue-600 hover:underline cursor-pointer">
+                        {group}
+                      </h2>
+                    </Link>
+                  )}
+                  {isDeleting && (
+                    <span className="flex items-center gap-1 text-xs font-medium bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full animate-pulse border border-red-200 shadow-sm">
+                      <svg className="w-3 h-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting from Azure...
+                    </span>
+                  )}
+                </div>
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 {groupApps.map(app => {
                   const appLink = app.AppName
@@ -153,7 +210,8 @@ function DashboardContent() {
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

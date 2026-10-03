@@ -15,10 +15,16 @@ export async function POST(req: Request) {
   }
 
   const user = await User.findById(tokenPayload.id);
-  if (!user?.azure?.accessToken) {
+  if (!user?.azureTokens) {
     return NextResponse.json({ success: false, message: "Azure account not linked or token missing" }, { status: 403 });
   }
-  const accessToken = user.azure.accessToken;
+
+  const { decrypt } = await import("@/utils/encryption");
+  const accessToken = decrypt(
+    user.azureTokens.encryptedData,
+    user.azureTokens.iv,
+    user.azureTokens.authTag
+  );
 
   try {
     // 1️⃣ Sync Subscriptions
@@ -44,14 +50,25 @@ export async function POST(req: Request) {
       );
       const rgData = await rgRes.json();
       const groups = rgData.value || [];
+      const azureRgNames = new Set<string>();
 
       for (const rg of groups) {
+        azureRgNames.add(rg.name);
+        const status = rg.properties?.provisioningState === "Deleting" ? "Deleting" : "Active";
+        
         await ResourceGroup.findOneAndUpdate(
           { name: rg.name, subscriptionId, userId: user.id },
-          { name: rg.name, location: rg.location, subscriptionId, userId: user.id },
+          { name: rg.name, location: rg.location, subscriptionId, userId: user.id, status },
           { upsert: true }
         );
       }
+
+      // Cleanup local DB RGs that were deleted on Azure
+      await ResourceGroup.deleteMany({
+        subscriptionId,
+        userId: user.id,
+        name: { $nin: Array.from(azureRgNames) }
+      });
 
       // 3️⃣ Sync App Services (Web Apps)
       const appRes = await fetch(
@@ -60,8 +77,10 @@ export async function POST(req: Request) {
       );
       const appData = await appRes.json();
       const webApps = appData.value || [];
+      const azureAppNames = new Set<string>();
 
       for (const site of webApps) {
+        azureAppNames.add(site.name);
         // Extract resource group name from resource ID
         const idParts = site.id.split("/resourceGroups/");
         let rgName = "";
@@ -89,6 +108,13 @@ export async function POST(req: Request) {
           { upsert: true, new: true }
         );
       }
+
+      // Cleanup local DB Apps that were deleted on Azure
+      await App.deleteMany({
+        subscriptionId,
+        userId: user.id,
+        AppName: { $nin: Array.from(azureAppNames) }
+      });
     }
 
     return NextResponse.json({

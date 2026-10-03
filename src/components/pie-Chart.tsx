@@ -82,7 +82,7 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
 
                 return (
                   <g
-                    key={arc.data.name}
+                    key={arc.data._id || `${arc.data.name}-${i}`}
                     onMouseEnter={() => setActive(arc.data)}
                     onMouseLeave={() => setActive(null)}
                     style={{ cursor: 'pointer' }}
@@ -97,20 +97,23 @@ export default function Home({ coins }: { coins: ResourceType[] }) {
           {/* center labels */}
           {active ? (
             <>
-              <Text textAnchor="middle" fill="#fff" fontSize={40} dy="-20">
-                {`₹${Math.floor(active.budget ?? 0)}`}
+              <Text textAnchor="middle" fill="#fff" fontSize={36} dy="-25">
+                {`₹${Math.floor(active.budget ?? 0)} Limit`}
               </Text>
-              <Text textAnchor="middle" fill={active.color} fontSize={20} dy="20">
-                {`${active.cost} ${active.name}`}
+              <Text textAnchor="middle" fill={active.color} fontSize={18} dy="5">
+                {`₹${Math.floor(active.cost ?? 0)} Spent`}
+              </Text>
+              <Text textAnchor="middle" fill="#aaa" fontSize={16} dy="30">
+                {active.name}
               </Text>
             </>
           ) : (
             <>
-              <Text textAnchor="middle" fill="#fff" fontSize={40} dy="-20">
+              <Text textAnchor="middle" fill="#fff" fontSize={36} dy="-20">
                 {`₹${Math.floor(chartData.reduce((s, c) => s + (c.budget ?? 0), 0))}`}
               </Text>
-              <Text textAnchor="middle" fill="#aaa" fontSize={20} dy="20">
-                {`${chartData.length} Resource Groups`}
+              <Text textAnchor="middle" fill="#aaa" fontSize={18} dy="15">
+                Total Budget
               </Text>
             </>
           )}

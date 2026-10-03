@@ -24,7 +24,6 @@ import ResourceGroupPage from '../../resourceGroup/page'
 
 export default function CreateAppPage() {
     const [isClient, setIsClient] = useState(false)
-    const [showCreateRG, setShowCreateRG] = useState(false)
     const [resourceGroups, setResourceGroups] = useState<string[]>([])
     const [subscriptions, setSubscriptions] = useState<string[]>([])
 
@@ -60,7 +59,8 @@ export default function CreateAppPage() {
                 }
 
                 if (rgData.success) {
-                    setResourceGroups(rgData.data.map((rg: any) => rg.name))
+                    const uniqueRGs = Array.from(new Set<string>(rgData.data.map((rg: any) => rg.name)));
+                    setResourceGroups(uniqueRGs);
                 }
             } catch (err) {
                 toast.error('Failed to fetch resources')
@@ -90,13 +90,6 @@ export default function CreateAppPage() {
         } catch {
             toast.error('App creation failed')
         }
-    }
-
-    const handleRGCreate = (newRG: string) => {
-        setResourceGroups((prev) => [...prev, newRG])
-        setValue('resourceGroup', newRG)
-        setShowCreateRG(false)
-        toast.success('Resource group created and selected!')
     }
 
     if (!isClient) return <div>Loading...</div>
@@ -175,13 +168,6 @@ export default function CreateAppPage() {
                                     {errors.resourceGroup && (
                                         <p className="text-red-700">{errors.resourceGroup.message}</p>
                                     )}
-                                    <button
-                                        type="button"
-                                        className="text-sm text-blue-600 underline mt-1"
-                                        onClick={() => setShowCreateRG(!showCreateRG)}
-                                    >   
-                                        {showCreateRG ? 'Cancel' : 'Create new resource group'}
-                                    </button>
                                 </div>
 
                                 {/* App Service Name */}
@@ -236,21 +222,6 @@ export default function CreateAppPage() {
                         </form>
                     </CardContent>
                 </Card>
-
-            </div>
-            <div className='w-full max-w-md'>
-
-                {showCreateRG && (
-                    <Card className="w-full max-w-sm">
-                        <CardHeader>
-                            <CardTitle>Create new Resource group</CardTitle>
-                            <CardDescription>
-                                <ResourceGroupPage/>
-                                Resource group creation form coming soon.
-                            </CardDescription>
-                        </CardHeader>
-                    </Card>
-                )}
 
             </div>
         </div>

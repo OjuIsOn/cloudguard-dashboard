@@ -33,7 +33,13 @@ export async function GET(req: Request) {
         }, { status: 404 });
     }
     const subs = await Subscription.find({ userId: user._id })
-    const accessToken = user.azure?.accessToken;
+    
+    if (!user.azureTokens) {
+        return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
+    }
+    
+    const { decrypt } = await import('@/utils/encryption');
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
     const subscriptionId = subs && subs.length > 0 ? subs[0].subscriptionId : undefined;
     
 

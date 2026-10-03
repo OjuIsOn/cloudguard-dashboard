@@ -3,11 +3,6 @@ export const registerSchema = z.object({
   name: z.string(),
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-
-  clientId: z.string(),
-  clientSecret: z.string(),
-  tenantId: z.string()
-
 })
 
 export const loginSchema = z.object({

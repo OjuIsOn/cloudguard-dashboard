@@ -19,12 +19,13 @@ export async function PUT(req: NextRequest, { params }) {
     const user = await User.findById(userPayload.id);
     const sub = await Subscription.findOne({ userId: userPayload.id });
 
-    if (!user || !user.azure || !user.azure.accessToken) {
+    if (!user || !user.azureTokens) {
         return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
     }
 
     const { amount = 1000, threshold = 100, autoShut } = await req.json();
-    const accessToken = user.azure.accessToken;
+    const { decrypt } = await import('@/utils/encryption');
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
     const { group } = await params;
     const resource = await ResourceGroup.findOne({ name: group });
@@ -187,5 +188,47 @@ export async function GET(req: NextRequest, { params }) {
     } catch (err) {
         console.log(err);
         return NextResponse.json({ error: 'Internal Server Error', details: err }, { status: 500 });
+    }
+}
+
+// @ts-expect-error Next.js provides params at runtime
+export async function DELETE(req: NextRequest, { params }) {
+    await connectDB();
+    const { group } = await params;
+    
+    try {
+        const userPayload = await getUserFromToken();
+        if (!userPayload) {
+            return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+        }
+        
+        const user = await User.findById(userPayload.id);
+        if (!user || !user.azureTokens) {
+            return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
+        }
+        
+        const { decrypt } = await import('@/utils/encryption');
+        const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
+        
+        const resource = await ResourceGroup.findOne({ name: group, userId: user._id });
+        if (!resource) {
+            return NextResponse.json({ success: false, message: "Resource group not found" }, { status: 404 });
+        }
+        
+        // Use Strategy Pattern to delete from Azure
+        const { CloudProviderFactory } = await import('@/strategies/cloudProvider.factory');
+        const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
+        
+        await cloudProvider.deleteResourceGroup(resource.name, resource.subscriptionId);
+        
+        // Delete from MongoDB
+        await ResourceGroup.findByIdAndDelete(resource._id);
+        const { App } = await import('@/models/app');
+        await App.deleteMany({ resourceGroup: resource.name, userId: user._id });
+        
+        return NextResponse.json({ success: true, message: "Resource Group and all associated apps deleted successfully" });
+    } catch (err: any) {
+        console.error("Failed to delete Resource Group:", err);
+        return NextResponse.json({ success: false, message: "Failed to delete Resource Group", error: err.message }, { status: 500 });
     }
 }

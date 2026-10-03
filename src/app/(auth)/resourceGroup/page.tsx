@@ -74,7 +74,7 @@ export default function ResourceGroupPage() {
         toast.success("Resource group created successfully")
         router.push('/dashboard') // or wherever you want to redirect after success
       } else {
-        toast.error(json.message || "Failed to create resource group")
+        toast.error(json.error || json.message || "Failed to create resource group")
       }
     } catch (error) {
       toast.error("Something went wrong")

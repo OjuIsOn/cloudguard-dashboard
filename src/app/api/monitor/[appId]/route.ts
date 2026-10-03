@@ -7,7 +7,10 @@ import { App } from '@/models/app';
 import { User } from '@/models/user';
 import { updateAppSettings } from "@/utils/azure-env";
 import { getCostEstimate } from '@/utils/azure-cost';
-import { stopAzureApp, deleteAzureApp, restartAzureApp } from '@/utils/azure-ops';
+import { stopAzureApp, restartAzureApp } from '@/utils/azure-ops';
+import { CloudProviderFactory } from '@/strategies/cloudProvider.factory';
+import { decrypt } from '@/utils/encryption';
+import { appRepository } from '@/repositories/app.repository';
 
 // =======================
 // GET: Cost & App Settings
@@ -28,18 +31,24 @@ export async function GET(req: Request, { params }) {
       return NextResponse.json({ success: false, message: 'App not found' }, { status: 404 });
     }
 
+    if (!user.azureTokens) {
+      return NextResponse.json({ success: false, message: 'Azure not linked' }, { status: 403 });
+    }
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
+
     const cost = await getCostEstimate(
       app._id,
       app.subscriptionId,
       app.resourceGroup,
       app.AppName,
-      user.azure.accessToken
+      accessToken
     );
 
     return NextResponse.json({
       success: true,
       cost,
       budget: app.budget ?? 0,
+      hardLimit: app.hardLimit ?? 0,
       autoShutdown: app.autoStop ?? false,
       AppName: app.AppName,
       env: app.envVars ?? {},
@@ -75,9 +84,15 @@ export async function PUT(req: NextRequest, { params }) {
     }
 
     const body = await req.json();
-    const { budget, autoShut, env } = body;
+    const { budget, hardLimit, autoShut, env } = body;
+
+    if (!user.azureTokens) {
+      return NextResponse.json({ success: false, message: 'Azure not linked' }, { status: 403 });
+    }
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
     if (budget !== undefined) app.budget = budget;
+    if (hardLimit !== undefined) app.hardLimit = hardLimit;
     if (autoShut !== undefined) app.autoStop = autoShut;
 
     if (env && typeof env === "object") {
@@ -85,7 +100,7 @@ export async function PUT(req: NextRequest, { params }) {
         appName: app.AppName,
         resourceGroup: app.resourceGroup,
         subscriptionId: app.subscriptionId,
-        accessToken: user.azure.accessToken,
+        accessToken: accessToken,
         settings: env,
       });
 
@@ -133,18 +148,23 @@ export async function POST(req: Request, { params }) {
       return NextResponse.json({ success: false, message: 'App not found' }, { status: 404 });
     }
 
+    if (!user.azureTokens) {
+      return NextResponse.json({ success: false, message: 'Azure not linked' }, { status: 403 });
+    }
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
+
     const body = await req.json();
     const { action } = body;
 
     if (action === 'stop') {
-      await stopAzureApp({ ...app._doc, accessToken: user.azure.accessToken });
+      await stopAzureApp({ ...app._doc, accessToken: accessToken });
     } else if (action === 'delete') {
-      
-      const res=await deleteAzureApp({ ...app._doc, accessToken: user.azure.accessToken });
-      
-      console.log(res);
+      const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
+      await cloudProvider.deleteApp(app.AppName, app.resourceGroup, app.subscriptionId);
+      await appRepository.delete(appId);
+      console.log(`Successfully deleted app ${appId}`);
     } else if (action === 'restart') {
-      const result = await restartAzureApp({ ...app._doc, accessToken: user.azure.accessToken });
+      const result = await restartAzureApp({ ...app._doc, accessToken: accessToken });
       if (!result.success) {
         return NextResponse.json({ success: false, message: result.message, error: result.error }, { status: 500 });
       }

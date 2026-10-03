@@ -33,10 +33,7 @@ export default function RegisterForm() {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          name:data.name,
-          clientId:data.clientId,
-          clientSecret:data.clientSecret,
-          tenantId:data.tenantId
+          name: data.name
         }),
         credentials: "include",
       });
@@ -69,9 +66,9 @@ export default function RegisterForm() {
           {error && (<p className='text-red-600 '>
             {error}
           </p>)}
-          <CardTitle>Login to your account</CardTitle>
+          <CardTitle>Register for an account</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Create a new account below
 
           </CardDescription>
           <CardAction>
@@ -159,56 +156,9 @@ export default function RegisterForm() {
 
 
 
-                <div className="grid gap-2">
-                    <Label htmlFor="clientId">clientID</Label>
-                  <Controller
-                    name="clientId"
-                    control={control}
-                    defaultValue=""
-                    render={({ field }) => (
-                      <Input {...field} id="clientId" type="clientId" required />
-                    )}
-                  />
-                  {errors.clientId && (<p className='text-red-700'>
-                    {errors.clientId.message}
-                  </p>)}
-                </div>
-
-
-
-                 <div className="grid gap-2">
-                    <Label htmlFor="clientSecret">clientSecret</Label>
-                  <Controller
-                    name="clientSecret"
-                    control={control}
-                    defaultValue=""
-                    render={({ field }) => (
-                      <Input {...field} id="clientSecret" type="clientSecret" required />
-                    )}
-                  />
-                  {errors.clientSecret && (<p className='text-red-700'>
-                    {errors.clientSecret.message}
-                  </p>)}
-                </div>
-
-
-                <div className="grid gap-2">
-                    <Label htmlFor="tenantId">tenantId</Label>
-                  <Controller
-                    name="tenantId"
-                    control={control}
-                    defaultValue=""
-                    render={({ field }) => (
-                      <Input {...field} id="tenantId" type="tenantId" required />
-                    )}
-                  />
-                  {errors.tenantId && (<p className='text-red-700'>
-                    {errors.tenantId.message}
-                  </p>)}
-                </div>
 
               <Button type="submit" className="w-full">
-                Login
+                Register
               </Button>
               </div>
           </form>

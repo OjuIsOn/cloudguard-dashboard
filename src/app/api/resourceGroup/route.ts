@@ -20,11 +20,31 @@ export async function GET(req: Request) {
     );
   }
   const subscription = await Subscription.findOne({ userId: tokenPayload.id });
+  if (!subscription) {
+    return NextResponse.json({ success: true, data: [] }); // Return empty array if no sub
+  }
+  const user = await User.findById(tokenPayload.id);
+
+    if (!user || !user.azureTokens) {
+        return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
+    }
+
+    const { decrypt } = await import('@/utils/encryption');
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
   try {
     const resourceGoups = await ResourceGroup.find({ subscriptionId: subscription.subscriptionId });
 
-    if (!resourceGoups || resourceGoups.length === 0) {
+    // Fetch actual live Resource Groups from Azure
+    const { CloudProviderFactory } = await import('@/strategies/cloudProvider.factory');
+    const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
+    const azureRGs = await cloudProvider.listResourceGroups(subscription.subscriptionId);
+    const azureRGNames = azureRGs.map((rg: any) => rg.name);
+
+    // Filter DB groups that still exist in Azure
+    const validResourceGroups = resourceGoups.filter((rg) => azureRGNames.includes(rg.name));
+
+    if (!validResourceGroups || validResourceGroups.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -34,7 +54,7 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, data: resourceGoups });
+    return NextResponse.json({ success: true, data: validResourceGroups });
   } catch (err) {
     return NextResponse.json(
       {
@@ -58,33 +78,21 @@ export async function POST(req: Request) {
 
   const sub = await Subscription.findOne({ userId: userPayload.id })
   const user = await User.findById(userPayload.id);
-  if (!user || !user.azure || !user.azure.accessToken) {
+  if (!user || !user.azureTokens) {
     return NextResponse.json({ success: false, message: "Azure not linked" }, { status: 403 });
   }
 
-
   const { resourceGroup, location = "centralindia" } = await req.json();
-  const accessToken = user.azure.accessToken;
+  
+  const { decrypt } = await import('@/utils/encryption');
+  const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
+  
   const subscriptionId = sub.subscriptionId
   try {
-    // 1. Create Resource Group in Azure
-    const response = await fetch(
-      `https://management.azure.com/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}?api-version=2021-04-01`,
-      {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ location })
-      }
-    );
-
-    const result = await response.json();
-    console.log(result)
-    if (!response.ok) {
-      return NextResponse.json({ success: false, message: "Azure error", error: result }, { status: 500 });
-    }
+    // 1. Create Resource Group in Azure via Strategy
+    const { CloudProviderFactory } = await import('@/strategies/cloudProvider.factory');
+    const cloudProvider = CloudProviderFactory.getProvider("AZURE", { accessToken });
+    await cloudProvider.createResourceGroup(resourceGroup, location, subscriptionId);
 
     // 2. Save to DB
     const newGroup = await ResourceGroup.create({
@@ -99,7 +107,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: newGroup }, { status: 201 });
 
-  } catch (error) {
-    return NextResponse.json({ success: false, message: "Failed to create resource group", error }, { status: 500 });
+  } catch (error: any) {
+    console.error("Resource group creation failed:", error.message || error);
+    return NextResponse.json({ success: false, message: "Failed to create resource group", error: error.message || error }, { status: 500 });
   }
 }

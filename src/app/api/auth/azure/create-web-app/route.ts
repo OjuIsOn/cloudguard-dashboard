@@ -14,11 +14,12 @@ export async function POST(req: Request) {
 
     const userId = userPayload.id;
     const user = await User.findById(userId);
-    if (!user || !user.azure) {
+    if (!user || !user.azureTokens) {
         return NextResponse.json({ success: false, message: "Azure account is not linked" }, { status: 404 });
     }
 
-    const accessToken = user.azure.accessToken;
+    const { decrypt } = await import('@/utils/encryption');
+    const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
     const { Appname, resourceGroup, subscriptionId, _id } = await req.json();
 
     if (!Appname || !resourceGroup || !subscriptionId || !accessToken) {

@@ -15,7 +15,13 @@ const AppSchema = new Schema(
 
     cost: { type: Number, default: 0 },
     autoStop: { type: Boolean, default: false },
+    hardLimit: { type: Number, default: 0 },
     lastSynced: { type: Date },
+
+    deployStatus: { type: String, enum: ['idle', 'queued', 'deploying', 'live', 'failed'], default: 'idle' },
+    deployMessage: { type: String, default: '' },
+    appType: { type: String, enum: ['react', 'nodejs', ''], default: '' },
+    envVars: { type: String, default: '' },
 
     isDraft: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

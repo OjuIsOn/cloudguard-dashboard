@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { email, password, name, clientId, clientSecret, tenantId } = body
+    const { email, password, name } = body
 
     const existingUser = await User.findOne({ email })
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       res.cookies.set("token", token, {
         httpOnly: true,
         secure: true,
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 60 * 60 * 24 * 7,
         path: "/",
       })
@@ -52,12 +52,7 @@ export async function POST(req: Request) {
     const newUser = await User.create({
       email,
       password: hashed,
-      name,
-      accountCredentials: {
-        clientId,
-        clientSecret,
-        tenantId,
-      }
+      name
     });
 
 
@@ -71,7 +66,7 @@ export async function POST(req: Request) {
     res.cookies.set("token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     })
