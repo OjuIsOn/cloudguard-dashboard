@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { AppCard } from "@/components/app-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,7 +18,10 @@ import {
   AppWindow, 
   PieChart as PieIcon, 
   ExternalLink,
-  Loader2
+  Loader2,
+  KeyRound,
+  Building2,
+  X
 } from "lucide-react";
 
 const VisxPieChart = dynamic(() => import('@/components/pie-Chart'), {
@@ -69,6 +73,8 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [linked, setLinked] = useState(false);
+  const [tenantModalOpen, setTenantModalOpen] = useState(false);
+  const [customTenantId, setCustomTenantId] = useState('');
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -118,10 +124,14 @@ function DashboardContent() {
   useEffect(() => {
     Promise.all([
       fetch("/api/apps").then(r => r.json()),
-      fetch("/api/resourceGroup").then(r => r.json())
-    ]).then(([appsData, rgData]) => {
+      fetch("/api/resourceGroup").then(r => r.json()),
+      fetch("/api/subscription").then(r => r.json()).catch(() => ({ success: false }))
+    ]).then(([appsData, rgData, subsData]) => {
       setApps(appsData.data || []);
       setResourceGroups(rgData.data || []);
+      if (subsData.success && Array.isArray(subsData.data) && subsData.data.length > 0) {
+        setLinked(true);
+      }
     }).catch(err => {
       console.error(err);
       toast.error("Failed to load dashboard data");
@@ -203,15 +213,37 @@ function DashboardContent() {
             </Button>
           </Link>
 
-          {!linked && (
+          {!linked ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => window.location.href = "/api/auth/azure"}
+                className="bg-cyan-950/40 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-900/40 h-9 font-medium"
+              >
+                <Cloud className="w-3.5 h-3.5 mr-1.5" />
+                Connect Azure
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTenantModalOpen(true)}
+                className="border-white/[0.08] hover:bg-white/[0.04] text-slate-300 h-9 text-xs font-mono"
+              >
+                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-cyan-400" />
+                Use Tenant ID
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
-              onClick={() => window.location.href = "/api/auth/azure"}
-              className="bg-cyan-950/30 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-900/40 h-9"
+              onClick={() => setTenantModalOpen(true)}
+              className="border-white/[0.08] hover:bg-white/[0.04] text-slate-400 hover:text-slate-200 h-9 text-xs font-mono"
+              title="Connect with a different Azure Directory or Tenant ID"
             >
-              <Cloud className="w-3.5 h-3.5 mr-1.5" />
-              Connect Azure
+              <KeyRound className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+              Switch Tenant
             </Button>
           )}
         </div>
@@ -369,6 +401,75 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      {/* TENANT ID AUTH MODAL */}
+      {tenantModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-white/[0.08] p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Connect with Tenant ID</h3>
+                  <p className="text-xs text-slate-400">Target a specific Azure Active Directory</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTenantModalOpen(false)}
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-mono uppercase tracking-wider text-slate-300">
+                Azure Directory (Tenant) ID
+              </label>
+              <Input
+                value={customTenantId}
+                onChange={(e) => setCustomTenantId(e.target.value)}
+                placeholder="e.g. 72f988bf-86f1-41af-91ab-2d7cd011db47"
+                className="bg-slate-950 border-white/[0.08] focus:border-cyan-500 text-slate-100 placeholder:text-slate-600 rounded-lg text-xs h-10 font-mono"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && customTenantId.trim()) {
+                    window.location.href = `/api/auth/azure?tenantId=${customTenantId.trim()}`;
+                  }
+                }}
+              />
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Use this if standard login doesn't recognize your student or organization email. Find it in <strong>Azure Portal → Microsoft Entra ID → Overview → Tenant ID</strong>.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTenantModalOpen(false)}
+                className="border-white/[0.08] text-slate-300 text-xs font-mono h-9"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!customTenantId.trim()}
+                onClick={() => {
+                  if (customTenantId.trim()) {
+                    window.location.href = `/api/auth/azure?tenantId=${customTenantId.trim()}`;
+                  }
+                }}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs h-9 shadow-sm"
+              >
+                Connect Directory
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
