@@ -95,11 +95,18 @@ export async function PUT(req: NextRequest, { params }) {
     if (hardLimit !== undefined) app.hardLimit = hardLimit;
     if (autoShut !== undefined) app.autoStop = autoShut;
 
+    // Determine the effective budget amount to provision on Azure (either soft budget or hard limit)
+    const budgetAmount = (budget && Number(budget) > 0)
+      ? Number(budget)
+      : (hardLimit && Number(hardLimit) > 0)
+        ? Number(hardLimit)
+        : 0;
+
     // Trigger Azure Monitor Action Group and Native Azure Budget
     let emailAlertActivated = false;
     let azureBudgetCreated = false;
 
-    if (budget && Number(budget) > 0 && user.email && app.subscriptionId && app.resourceGroup) {
+    if (budgetAmount > 0 && user.email && app.subscriptionId && app.resourceGroup) {
       let actionGroupId: string | undefined;
       try {
         const { upsertEmailActionGroup } = await import('@/lib/azure/upsertActionGroup');
@@ -127,7 +134,7 @@ export async function PUT(req: NextRequest, { params }) {
         const budgetPayload = {
           properties: {
             category: "Cost",
-            amount: Number(budget),
+            amount: budgetAmount,
             timeGrain: "Monthly",
             timePeriod: { startDate, endDate },
             notifications: {
