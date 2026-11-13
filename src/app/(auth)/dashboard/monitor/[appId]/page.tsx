@@ -27,6 +27,7 @@ export default function MonitorPage() {
   const [deployMessage, setDeployMessage] = useState('');
   const [appType, setAppType] = useState('');
   const [appName, setAppName] = useState('');
+  const [planTier, setPlanTier] = useState('');
 
   // Live Logs
   const [showLogs, setShowLogs] = useState(false);
@@ -47,6 +48,7 @@ export default function MonitorPage() {
         setDeployMessage(data.deployMessage || '');
         setAppType(data.appType || '');
         setAppName(data.name || '');
+        setPlanTier(data.planTier || 'F1');
 
         if (data.envVars) {
           try {
@@ -180,6 +182,11 @@ export default function MonitorPage() {
               {appType && (
                 <span className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded uppercase tracking-wider border border-gray-700">
                   {appType}
+                </span>
+              )}
+              {planTier && (
+                <span className={`text-xs px-2 py-1 rounded font-semibold border ${planTier === 'F1' ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800' : 'bg-amber-950/60 text-amber-400 border-amber-800'}`}>
+                  Plan: {planTier}
                 </span>
               )}
             </h2>

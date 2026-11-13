@@ -22,6 +22,8 @@ const AppSchema = new Schema(
     deployMessage: { type: String, default: '' },
     appType: { type: String, enum: ['react', 'nodejs', ''], default: '' },
     envVars: { type: String, default: '' },
+    planTier: { type: String, default: 'F1' },
+    location: { type: String, default: '' },
 
     isDraft: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

@@ -96,8 +96,10 @@ export default function ResourceGroupPage() {
       <div>
         <label className="block text-sm mb-1">Location</label>
         <select {...register("location")} className="w-full border rounded p-2">
-          <option value="eastus">East US</option>
+          <option value="indiasouthcentral">South Central India</option>
           <option value="centralindia">Central India</option>
+          <option value="southindia">South India</option>
+          <option value="eastus">East US</option>
           <option value="westus">West US</option>
           <option value="eastasia">East Asia</option>
         </select>

@@ -20,16 +20,26 @@ export async function POST(req: Request) {
 
     const { decrypt } = await import('@/utils/encryption');
     const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
-    const { Appname, resourceGroup, subscriptionId, _id } = await req.json();
+    const { Appname, resourceGroup, subscriptionId, _id, location: requestedLocation, plan: requestedPlan } = await req.json();
 
     if (!Appname || !resourceGroup || !subscriptionId || !accessToken) {
         return NextResponse.json({ success: false, message: "Missing required fields!" }, { status: 400 });
     }
 
+    const SKU_MAPPING: Record<string, { name: string; tier: string; size: string; family: string; capacity: number }> = {
+        F1: { name: "F1", tier: "Free", size: "F1", family: "F", capacity: 1 },
+        B1: { name: "B1", tier: "Basic", size: "B1", family: "B", capacity: 1 },
+        B2: { name: "B2", tier: "Basic", size: "B2", family: "B", capacity: 1 },
+        S1: { name: "S1", tier: "Standard", size: "S1", family: "S", capacity: 1 },
+    };
+
+    const planKey = (requestedPlan || "F1").toUpperCase();
+    const selectedSku = SKU_MAPPING[planKey] || SKU_MAPPING.F1;
+
     const rgPayload = await ResourceGroup.findOne({ userId, subscriptionId, name: resourceGroup });
-    const location = rgPayload?.location;
+    const location = requestedLocation || rgPayload?.location || "indiasouthcentral";
     const baseUrl = `https://management.azure.com/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}`;
-    const appServicePlanName = "linuxKaServicePLAN";
+    const appServicePlanName = `plan-${selectedSku.name.toLowerCase()}-${location.toLowerCase()}`;
 
     const headers = {
         Authorization: `Bearer ${accessToken}`,
@@ -73,13 +83,7 @@ export async function POST(req: Request) {
                 headers,
                 body: JSON.stringify({
                     location,
-                    sku: {
-                        name: "F1",
-                        tier: "Free",
-                        size: "F1",
-                        family: "F",
-                        capacity: 1,
-                    },
+                    sku: selectedSku,
                     kind: "linux",
                     properties: {
                         reserved: true, // this is key for Linux plans
@@ -90,9 +94,10 @@ export async function POST(req: Request) {
             const planResult = await planCreateRes.json();
 
             if (!planCreateRes.ok) {
+                const planErrorMsg = planResult?.error?.message || planResult?.message || "Failed to create Linux service plan";
                 return NextResponse.json({
                     success: false,
-                    message: "Failed to create Linux service plan",
+                    message: planErrorMsg,
                     error: planResult,
                 }, { status: 500 });
             }
@@ -126,9 +131,10 @@ export async function POST(req: Request) {
         const appResult = await appRes.json();
 
         if (!appRes.ok) {
+            const appErrorMsg = appResult?.error?.message || appResult?.message || "Failed to create Linux Web App.";
             return NextResponse.json({
                 success: false,
-                message: "Failed to create Linux Web App.",
+                message: appErrorMsg,
                 error: appResult,
             }, { status: 500 });
         }
@@ -137,6 +143,8 @@ export async function POST(req: Request) {
         await App.findByIdAndUpdate(_id, {
             isDraft: false,
             AppName: Appname,
+            location: location,
+            planTier: selectedSku.name,
             deployedAt: new Date(),
         });
 

@@ -19,6 +19,8 @@ export default function Page() {
 
   const [appData, setAppData] = useState<AppType | null>(null);
   const [webAppName, setWebAppName] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('indiasouthcentral');
+  const [selectedPlan, setSelectedPlan] = useState('F1');
   const [status, setStatus] = useState<'idle' | 'checking' | 'taken' | 'unique' | 'error' | string>('idle');
   const [hostedURL, setHostedURL] = useState('');
   const [appCreateLoading, setAppCreateLoading] = useState(false);
@@ -64,6 +66,9 @@ export default function Page() {
         .then(data => {
           if (!data || !data.data) throw new Error('No data returned from API');
           setAppData(data.data);
+          if (data.data.location) {
+            setSelectedLocation(data.data.location);
+          }
         })
         .catch((err) => {
           toast.error("Failed to load app");
@@ -83,6 +88,8 @@ export default function Page() {
         body: JSON.stringify({
           ...appData,
           Appname: webAppName,
+          location: selectedLocation,
+          plan: selectedPlan,
         }),
       });
       const data = await res.json();
@@ -104,9 +111,12 @@ export default function Page() {
       );
 
       router.push(`/dashboard/deploy/${appId}/prepare`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      toast("Couldn't create web app service");
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      toast.error(msg || "Couldn't create web app service");
+    } finally {
+      setAppCreateLoading(false);
     }
   };
 
@@ -118,10 +128,54 @@ export default function Page() {
     <div className="p-6 space-y-4 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold">Deploy "{appData.name}"</h1>
 
-      <div className="border p-4 rounded-md shadow">
+      <div className="border p-4 rounded-md shadow space-y-1">
         <p><strong>Subscription:</strong> {appData.subscriptionId}</p>
         <p><strong>Resource Group:</strong> {appData.resourceGroup}</p>
         <p><strong>App Service Name:</strong> {appData.appServiceName}</p>
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-sm font-medium">Azure Deployment Region</label>
+        <select
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className="w-full border rounded-md p-2 bg-background text-foreground"
+        >
+          <option value="indiasouthcentral">South Central India (indiasouthcentral)</option>
+          <option value="centralindia">Central India (centralindia)</option>
+          <option value="southindia">South India (southindia)</option>
+          <option value="eastus">East US (eastus - Most reliable for Free Tier)</option>
+          <option value="westus">West US (westus)</option>
+          <option value="centralus">Central US (centralus)</option>
+          <option value="westeurope">West Europe (westeurope)</option>
+          <option value="southeastasia">Southeast Asia (southeastasia)</option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Note: Azure Free (F1) Linux tier availability varies by subscription. If Central India has 0 quota, select South Central India or East US.
+        </p>
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-sm font-medium">App Service Pricing Tier (Plan)</label>
+        <select
+          value={selectedPlan}
+          onChange={(e) => setSelectedPlan(e.target.value)}
+          className="w-full border rounded-md p-2 bg-background text-foreground"
+        >
+          <option value="F1">F1 Free ($0/mo) — 60 CPU min/day, 1GB RAM (Shared)</option>
+          <option value="B1">B1 Basic (~$13/mo) — Dedicated 1 vCPU, 1.75GB RAM, Custom Domain / SSL</option>
+          <option value="B2">B2 Basic (~$26/mo) — Dedicated 2 vCPU, 3.5GB RAM</option>
+          <option value="S1">S1 Standard (~$70/mo) — Dedicated 1 vCPU, Auto-scaling & Staging Slots</option>
+        </select>
+        {selectedPlan !== 'F1' ? (
+          <p className="text-xs text-amber-500 font-medium">
+            ⚡ Paid Compute Tier Selected: Azure will bill your connected account. Ensure you set auto-stop limits in the monitor tab!
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Default: Free sandbox tier for development and zero-cost testing.
+          </p>
+        )}
       </div>
 
       <Input
