@@ -36,13 +36,39 @@ export async function GET(req: Request, { params }) {
     }
     const accessToken = decrypt(user.azureTokens.encryptedData, user.azureTokens.iv, user.azureTokens.authTag);
 
-    const cost = await getCostEstimate(
-      app._id,
-      app.subscriptionId,
-      app.resourceGroup,
-      app.AppName,
-      accessToken
-    );
+    let cost = 0;
+    try {
+      cost = await getCostEstimate(
+        app._id,
+        app.subscriptionId,
+        app.resourceGroup,
+        app.AppName,
+        accessToken
+      );
+    } catch (costErr: any) {
+      console.warn("Could not query Azure Cost API:", costErr.message);
+      cost = app.cost || 0;
+    }
+
+    // Auto-Stop check: If cost exceeds hardLimit and autoStop is true, shut it down!
+    let stoppedByCircuitBreaker = false;
+    if (app.autoStop && app.hardLimit && cost > app.hardLimit && app.AppName) {
+      try {
+        const { stopAzureApp } = await import('@/utils/azure-ops');
+        const stopRes = await stopAzureApp({
+          AppName: app.AppName,
+          resourceGroup: app.resourceGroup,
+          subscriptionId: app.subscriptionId,
+          accessToken,
+        });
+        stoppedByCircuitBreaker = stopRes.success;
+        if (stoppedByCircuitBreaker) {
+          console.log(`[CIRCUIT BREAKER] Hard limit ₹${app.hardLimit} exceeded (Cost: ₹${cost}). App ${app.AppName} stopped.`);
+        }
+      } catch (stopErr: any) {
+        console.error("Auto-stop failed:", stopErr.message);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -50,6 +76,7 @@ export async function GET(req: Request, { params }) {
       budget: app.budget ?? 0,
       hardLimit: app.hardLimit ?? 0,
       autoShutdown: app.autoStop ?? false,
+      stoppedByCircuitBreaker,
       AppName: app.AppName,
       env: app.envVars ?? {},
     });

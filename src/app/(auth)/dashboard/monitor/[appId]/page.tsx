@@ -36,10 +36,16 @@ export default function MonitorPage() {
 
   const fetchAppData = async () => {
     try {
-      const res = await fetch(`/api/apps/${appId}`);
+      const [res, monitorRes] = await Promise.all([
+        fetch(`/api/apps/${appId}`),
+        fetch(`/api/monitor/${appId}`)
+      ]);
       const { success, data } = await res.json();
+      const monitorData = await monitorRes.json().catch(() => ({}));
+
       if (success && data) {
-        setCost(data.cost || 0);
+        const liveCost = monitorData?.success ? monitorData.cost : (data.cost || 0);
+        setCost(liveCost);
         setBudget(data.budget || 0);
         setHardLimit(data.hardLimit || 0);
         setAutoShut(data.autoStop || false);
@@ -49,6 +55,10 @@ export default function MonitorPage() {
         setAppType(data.appType || '');
         setAppName(data.name || '');
         setPlanTier(data.planTier || 'F1');
+
+        if (monitorData?.stoppedByCircuitBreaker) {
+          toast.error(`🚨 Auto-Shutdown triggered! Cost ₹${liveCost} exceeded Hard Limit ₹${data.hardLimit}. App has been stopped on Azure.`);
+        }
 
         if (data.envVars) {
           try {
