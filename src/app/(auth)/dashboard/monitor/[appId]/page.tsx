@@ -3,9 +3,28 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import BudgetPie from '@/components/each-app-pie';
-import { CheckCircle, Clock, Loader2, Play, Square, Trash2, XCircle, TerminalSquare } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  Loader2,
+  Play,
+  Square,
+  Trash2,
+  XCircle,
+  TerminalSquare,
+  ExternalLink,
+  ShieldCheck,
+  Zap,
+  RefreshCw,
+  Server,
+  Layers,
+  Copy,
+  AlertTriangle,
+} from 'lucide-react';
 
 export default function MonitorPage() {
   const { appId } = useParams() as { appId: string };
@@ -20,7 +39,7 @@ export default function MonitorPage() {
   const [envInput, setEnvInput] = useState('');
   const [envError, setEnvError] = useState<string | null>(null);
   const [action, setAction] = useState<'stop' | 'restart' | 'delete' | ''>('');
-  
+
   // Deployment Tracking
   const [hostedUrl, setHostedUrl] = useState('');
   const [deployStatus, setDeployStatus] = useState<'idle' | 'queued' | 'deploying' | 'live' | 'failed'>('idle');
@@ -38,13 +57,13 @@ export default function MonitorPage() {
     try {
       const [res, monitorRes] = await Promise.all([
         fetch(`/api/apps/${appId}`),
-        fetch(`/api/monitor/${appId}`)
+        fetch(`/api/monitor/${appId}`),
       ]);
       const { success, data } = await res.json();
       const monitorData = await monitorRes.json().catch(() => ({}));
 
       if (success && data) {
-        const liveCost = monitorData?.success ? monitorData.cost : (data.cost || 0);
+        const liveCost = monitorData?.success ? monitorData.cost : data.cost || 0;
         setCost(liveCost);
         setBudget(data.budget || 0);
         setHardLimit(data.hardLimit || 0);
@@ -57,13 +76,14 @@ export default function MonitorPage() {
         setPlanTier(data.planTier || 'F1');
 
         if (monitorData?.stoppedByCircuitBreaker) {
-          toast.error(`🚨 Auto-Shutdown triggered! Cost ₹${liveCost} exceeded Hard Limit ₹${data.hardLimit}. App has been stopped on Azure.`);
+          toast.error(
+            `🚨 Circuit Breaker Triggered: Spend ₹${liveCost} exceeded Hard Limit ₹${data.hardLimit}. App stopped on Azure.`
+          );
         }
 
         if (data.envVars) {
           try {
-            // Only update if envInput is empty to prevent overwriting user typing
-            setEnvInput(prev => prev || data.envVars);
+            setEnvInput((prev) => prev || data.envVars);
             setEnv(JSON.parse(data.envVars));
           } catch (e) {
             console.error('Failed to parse envVars from DB', e);
@@ -71,7 +91,7 @@ export default function MonitorPage() {
         }
 
         if (data.budget && data.cost > data.budget) {
-          toast.error(`App cost ₹${data.cost} exceeded the alert budget ₹${data.budget}`);
+          toast.error(`FinOps Alert: Spend ₹${data.cost} exceeded Soft Budget ₹${data.budget}`);
         }
       }
     } catch (err) {
@@ -92,15 +112,13 @@ export default function MonitorPage() {
     }
   };
 
-  // Poll for app data every 3 seconds if deploying/queued, otherwise every 5 mins
   useEffect(() => {
     fetchAppData();
-    const intervalTime = (deployStatus === 'queued' || deployStatus === 'deploying') ? 3000 : 5 * 60 * 1000;
+    const intervalTime = deployStatus === 'queued' || deployStatus === 'deploying' ? 3000 : 5 * 60 * 1000;
     const interval = setInterval(fetchAppData, intervalTime);
     return () => clearInterval(interval);
   }, [appId, deployStatus]);
 
-  // Poll for logs every 3 seconds when logs panel is open
   useEffect(() => {
     if (showLogs) {
       fetchLogs();
@@ -109,7 +127,6 @@ export default function MonitorPage() {
     }
   }, [appId, showLogs]);
 
-  // Auto scroll logs
   useEffect(() => {
     if (logsEndRef.current) {
       logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
@@ -119,11 +136,16 @@ export default function MonitorPage() {
   const handleEnvChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const input = e.target.value;
     setEnvInput(input);
+    if (!input.trim()) {
+      setEnvError(null);
+      setEnv({});
+      return;
+    }
     try {
       setEnv(JSON.parse(input));
       setEnvError(null);
     } catch {
-      setEnvError('Invalid JSON format');
+      setEnvError('Invalid JSON format (Must be valid key-value pairs)');
     }
   };
 
@@ -138,12 +160,12 @@ export default function MonitorPage() {
       });
       const result = await res.json();
       result.success ? toast.success(result.message) : toast.error(result.message || 'Action failed');
-      
+
       if (action === 'delete' && result.success) {
         router.push('/dashboard');
       }
     } catch (err) {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong executing action');
     } finally {
       setLoading(false);
       setAction('');
@@ -162,7 +184,7 @@ export default function MonitorPage() {
       if (!res.ok || !data.success) {
         toast.error(data.message || 'Failed to save settings');
       } else {
-        toast.success(data.message || 'Settings saved successfully');
+        toast.success(data.message || 'Configuration synchronized to Azure!');
         fetchAppData();
       }
     } catch (err) {
@@ -172,167 +194,339 @@ export default function MonitorPage() {
     }
   };
 
-  const getStatusColor = () => {
+  const getStatusBadge = () => {
     switch (deployStatus) {
-      case 'live': return 'bg-green-500 shadow-[0_0_10px_#22c55e]';
-      case 'failed': return 'bg-red-500 shadow-[0_0_10px_#ef4444]';
-      case 'deploying': return 'bg-yellow-400 animate-pulse shadow-[0_0_10px_#facc15]';
-      case 'queued': return 'bg-blue-400 animate-pulse shadow-[0_0_10px_#60a5fa]';
-      default: return 'bg-gray-500';
+      case 'live':
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-1 rounded-full">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+            RUNNING LIVE
+          </span>
+        );
+      case 'deploying':
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/80 px-2.5 py-1 rounded-full">
+            <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+            PROVISIONING
+          </span>
+        );
+      case 'queued':
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-mono text-blue-400 bg-blue-950/60 border border-blue-800/80 px-2.5 py-1 rounded-full">
+            <Clock className="w-3 h-3 text-blue-400" />
+            QUEUED IN QSTASH
+          </span>
+        );
+      case 'failed':
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-mono text-rose-400 bg-rose-950/60 border border-rose-800/80 px-2.5 py-1 rounded-full">
+            <XCircle className="w-3 h-3 text-rose-400" />
+            FAILED
+          </span>
+        );
+      default:
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full">
+            IDLE
+          </span>
+        );
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl p-6 space-y-8 animate-fadeIn">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-900/50 p-6 rounded-xl border border-gray-800">
-        <div className="flex items-center gap-4">
-          <div className={`w-4 h-4 rounded-full ${getStatusColor()}`} />
-          <div>
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              {appName || 'Loading App...'}
-              {appType && (
-                <span className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded uppercase tracking-wider border border-gray-700">
-                  {appType}
-                </span>
-              )}
-              {planTier && (
-                <span className={`text-xs px-2 py-1 rounded font-semibold border ${planTier === 'F1' ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800' : 'bg-amber-950/60 text-amber-400 border-amber-800'}`}>
-                  Plan: {planTier}
-                </span>
-              )}
-            </h2>
-            <div className="text-gray-400 mt-1 flex items-center gap-2">
-              <span className="capitalize">{deployStatus} Status</span>
-              <span>•</span>
-              {hostedUrl ? (
-                <a href={hostedUrl} target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">
-                  {hostedUrl}
-                </a>
-              ) : (
-                <span className="text-gray-500 italic">No URL</span>
-              )}
-            </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-cyan-500/10 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute top-12 right-12 w-[350px] h-[250px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center justify-between">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center text-xs font-mono text-slate-400 hover:text-cyan-400 transition-colors gap-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            BACK TO DASHBOARD
+          </Link>
+          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+            LIVE FINOPS COCKPIT
           </div>
         </div>
-        <div className="flex gap-3">
-          {hostedUrl && deployStatus === 'live' && (
-            <Button onClick={() => window.open(hostedUrl, "_blank")} className="bg-cyan-600 hover:bg-cyan-500 text-white">
-              <Play className="w-4 h-4 mr-2" /> Visit App
+
+        {/* HEADER HERO */}
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+              <Server className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl font-bold tracking-tight text-white">
+                  {appName || 'Workload Console'}
+                </h1>
+                {getStatusBadge()}
+                {appType && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 uppercase">
+                    {appType}
+                  </span>
+                )}
+                {planTier && (
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                      planTier === 'F1'
+                        ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/80'
+                        : 'bg-amber-950/60 text-amber-400 border-amber-800/80'
+                    }`}
+                  >
+                    Tier: {planTier}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                {hostedUrl ? (
+                  <a
+                    href={hostedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
+                  >
+                    {hostedUrl}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-slate-500 italic">No endpoint assigned</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {hostedUrl && deployStatus === 'live' && (
+              <Button
+                onClick={() => window.open(hostedUrl, '_blank')}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs h-10 px-4 shadow-lg shadow-cyan-500/20"
+              >
+                <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Visit App
+              </Button>
+            )}
+            <Button
+              onClick={() => router.push(`/dashboard/deploy/${appId}/prepare`)}
+              variant="outline"
+              className="border-slate-800 hover:bg-slate-800/60 text-slate-300 text-xs font-mono h-10"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Redeploy
             </Button>
-          )}
-          <Button onClick={() => router.push(`/dashboard/deploy/${appId}/prepare`)} variant="outline" className="border-gray-700 hover:bg-gray-800">
-            Redeploy
-          </Button>
+          </div>
         </div>
-      </div>
 
-      {/* DEPLOYMENT TRACKER */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-          <Loader2 className={`w-5 h-5 ${deployStatus === 'queued' || deployStatus === 'deploying' ? 'animate-spin text-cyan-400' : 'hidden'}`} />
-          Deployment Pipeline
-        </h3>
-          
-          <div className="flex items-center justify-between relative">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-800 -z-10" />
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-cyan-500 transition-all duration-1000 -z-10`} 
-                 style={{ width: deployStatus === 'queued' ? '15%' : deployStatus === 'deploying' ? '50%' : deployStatus === 'live' ? '100%' : deployStatus === 'failed' ? '50%' : '0%' }} />
+        {/* DEPLOYMENT PIPELINE STEPPER */}
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-mono uppercase tracking-wider text-slate-200 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-cyan-400" /> Serverless Deployment Lifecycle
+            </h3>
+            <span className="text-[10px] font-mono text-slate-500">
+              Upstash QStash → Vercel Blob → Kudu REST
+            </span>
+          </div>
 
-            {/* Step 1: Uploaded */}
-            <div className="flex flex-col items-center gap-2 bg-gray-900 px-2 z-10">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${deployStatus !== 'idle' ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : 'border-yellow-500/50 bg-yellow-500/10 text-yellow-500/70 shadow-[0_0_10px_rgba(250,204,21,0.2)]'}`}>
-                <CheckCircle className="w-4 h-4" />
+          <div className="relative py-4 px-2">
+            {/* Background connection bar */}
+            <div className="absolute left-6 right-6 top-8 h-0.5 bg-slate-800 -z-0" />
+            <div
+              className="absolute left-6 top-8 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-700 -z-0"
+              style={{
+                width:
+                  deployStatus === 'queued'
+                    ? '30%'
+                    : deployStatus === 'deploying'
+                    ? '65%'
+                    : deployStatus === 'live'
+                    ? 'calc(100% - 3rem)'
+                    : '0%',
+              }}
+            />
+
+            <div className="grid grid-cols-4 gap-2 text-center relative z-10">
+              {/* Step 1: Uploaded */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                    deployStatus !== 'idle'
+                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                  }`}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-mono text-slate-300">Blob Ingested</span>
               </div>
-              <span className="text-xs text-gray-400">Uploaded</span>
-            </div>
 
-            {/* Step 2: Queued */}
-            <div className="flex flex-col items-center gap-2 bg-gray-900 px-2 z-10">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${(deployStatus === 'deploying' || deployStatus === 'live' || deployStatus === 'failed') ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : deployStatus === 'queued' ? 'border-blue-400 bg-blue-400/20 text-blue-400 animate-pulse shadow-[0_0_15px_rgba(96,165,250,0.6)]' : 'border-yellow-500/50 bg-yellow-500/10 text-yellow-500/70 shadow-[0_0_10px_rgba(250,204,21,0.2)]'}`}>
-                {deployStatus === 'queued' ? <Clock className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+              {/* Step 2: Queued */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                    deployStatus === 'queued'
+                      ? 'border-blue-400 bg-blue-950 text-blue-300 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)]'
+                      : deployStatus === 'deploying' || deployStatus === 'live'
+                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                  }`}
+                >
+                  {deployStatus === 'queued' ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                </div>
+                <span className="text-xs font-mono text-slate-300">QStash Queue</span>
               </div>
-              <span className="text-xs text-gray-400">Queued</span>
-            </div>
 
-            {/* Step 3: Deploying */}
-            <div className="flex flex-col items-center gap-2 bg-gray-900 px-2 z-10">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${deployStatus === 'live' ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : deployStatus === 'failed' ? 'border-red-500 bg-red-500/20 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.8)]' : deployStatus === 'deploying' ? 'border-blue-400 bg-blue-400/20 text-blue-400 animate-pulse shadow-[0_0_15px_rgba(96,165,250,0.6)]' : 'border-yellow-500/50 bg-yellow-500/10 text-yellow-500/70 shadow-[0_0_10px_rgba(250,204,21,0.2)]'}`}>
-                {deployStatus === 'failed' ? <XCircle className="w-4 h-4" /> : deployStatus === 'deploying' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              {/* Step 3: Provisioning */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                    deployStatus === 'deploying'
+                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.8)]'
+                      : deployStatus === 'live'
+                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+                      : deployStatus === 'failed'
+                      ? 'border-rose-500 bg-rose-950 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.6)]'
+                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                  }`}
+                >
+                  {deployStatus === 'deploying' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : deployStatus === 'failed' ? (
+                    <XCircle className="w-4 h-4" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                </div>
+                <span className="text-xs font-mono text-slate-300">Azure Kudu Push</span>
               </div>
-              <span className="text-xs text-gray-400">Provisioning</span>
-            </div>
 
-            {/* Step 4: Live */}
-            <div className="flex flex-col items-center gap-2 bg-gray-900 px-2 z-10">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${deployStatus === 'live' ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.8)]' : deployStatus === 'failed' ? 'border-red-500 bg-red-500/20 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'border-yellow-500/50 bg-yellow-500/10 text-yellow-500/70 shadow-[0_0_10px_rgba(250,204,21,0.2)]'}`}>
-                {deployStatus === 'failed' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+              {/* Step 4: Live */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                    deployStatus === 'live'
+                      ? 'border-emerald-400 bg-emerald-950 text-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.8)]'
+                      : deployStatus === 'failed'
+                      ? 'border-rose-500 bg-rose-950 text-rose-400'
+                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                  }`}
+                >
+                  {deployStatus === 'failed' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                </div>
+                <span className="text-xs font-mono text-slate-300">Healthy</span>
               </div>
-              <span className="text-xs text-gray-400">Live</span>
             </div>
           </div>
-          
+
           {deployMessage && (
-            <div className={`mt-6 p-4 rounded-lg text-sm border ${deployStatus === 'failed' ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-gray-800/50 border-gray-700 text-gray-300'}`}>
-              <span className="font-mono">{deployMessage}</span>
+            <div
+              className={`p-3 rounded-xl text-xs font-mono border ${
+                deployStatus === 'failed'
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  : 'bg-slate-950 border-slate-800 text-slate-300'
+              }`}
+            >
+              {deployMessage}
             </div>
           )}
 
-          <div className="mt-4">
-            <Button onClick={() => setShowLogs(!showLogs)} variant="secondary" size="sm" className="w-full bg-gray-800 hover:bg-gray-700 border-gray-700">
-              <TerminalSquare className="w-4 h-4 mr-2" /> {showLogs ? 'Hide Live Azure Logs' : 'Show Live Azure Logs'}
+          {/* Azure Logs Terminal Dropdown */}
+          <div className="pt-2">
+            <Button
+              onClick={() => setShowLogs(!showLogs)}
+              variant="outline"
+              size="sm"
+              className="w-full border-slate-800 hover:bg-slate-800/60 text-slate-300 text-xs font-mono flex items-center justify-center gap-2"
+            >
+              <TerminalSquare className="w-4 h-4 text-cyan-400" />
+              <span>{showLogs ? 'Hide Live Azure Kudu Logs' : 'Stream Live Azure Kudu Logs'}</span>
             </Button>
           </div>
 
           {showLogs && (
-            <div className="mt-4">
-              <div className="mb-2 p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg text-xs text-yellow-400">
-                <strong className="font-semibold block mb-1">⚠️ Azure Token Required</strong>
-                Live logs fetch directly from Azure. If your Azure session has expired, you may need to re-authenticate on the dashboard.
-              </div>
-              <div className="bg-[#0c0c0c] border border-gray-700 rounded-lg p-4 h-64 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#0c0c0c] to-transparent pointer-events-none z-10" />
-                <pre ref={logsEndRef} className="font-mono text-xs text-green-400 h-full overflow-y-auto whitespace-pre-wrap pb-8 pt-4">
-                  {logs || "Waiting for container logs..."}
-                </pre>
-                <div className="absolute bottom-2 right-4 flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  <span className="text-[10px] text-green-500 font-mono uppercase tracking-widest">Streaming</span>
+            <div className="space-y-2 animate-in fade-in duration-300">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                <div className="bg-slate-900/80 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
+                    <span className="ml-2 text-slate-300">kudu-docker-stream.log</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Live Tail</span>
+                  </div>
                 </div>
+                <pre
+                  ref={logsEndRef}
+                  className="p-4 font-mono text-xs text-emerald-400 h-64 overflow-y-auto whitespace-pre-wrap bg-black/80"
+                >
+                  {logs || 'Connecting to Azure Kudu log stream...'}
+                </pre>
               </div>
             </div>
           )}
         </div>
 
-      {/* COST & BUDGET */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Cost Controls</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <span className="text-gray-400">Current Cost</span>
-                <span className="text-2xl font-bold text-white">₹{cost.toFixed(2)}</span>
+        {/* FINOPS CONTROLS & PIE CHART */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Card 1: Cost & Circuit Breaker */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-mono uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-cyan-400" /> FinOps Budget Policies
+                </h3>
+                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-2 py-0.5 rounded">
+                  Autonomous Protection
+                </span>
               </div>
-              
-              <label className="block space-y-2">
-                <span className="text-sm text-gray-400">Soft Budget (UI Alert Only) ₹</span>
+              <p className="text-xs text-slate-400">
+                Prevent runaway consumption billing with automated circuit breakers
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Current Cost */}
+              <div className="flex justify-between items-center p-4 bg-slate-950/70 rounded-xl border border-slate-800">
+                <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                  Current Azure Billing
+                </span>
+                <span className="text-2xl font-extrabold text-white font-mono">
+                  ₹{cost.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Soft Budget */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+                  <span>Soft Budget (Action Group & Email Alert)</span>
+                  <span className="text-[11px] text-cyan-400 font-mono">Alert Threshold</span>
+                </label>
                 <input
                   type="number"
                   value={budget}
                   onChange={(e) => setBudget(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg p-3 text-slate-100 text-sm font-mono outline-none transition-all"
                   placeholder="e.g. 500"
                 />
-              </label>
+              </div>
 
-              <label className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg border border-gray-700 cursor-pointer group">
+              {/* Auto-Shutdown Toggle */}
+              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/50 flex items-center justify-between">
                 <div>
-                  <span className="block font-medium text-white group-hover:text-cyan-400 transition-colors">Auto Shutdown</span>
-                  <span className="text-xs text-gray-500">Stop app if hard limit is exceeded</span>
+                  <span className="block text-sm font-semibold text-slate-200">
+                    Hard Stop Circuit Breaker
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Automatically shut down container if hard limit is breached
+                  </span>
                 </div>
                 <div className="relative inline-block h-6 w-11">
                   <input
@@ -340,95 +534,173 @@ export default function MonitorPage() {
                     className="peer sr-only"
                     checked={autoShut}
                     onChange={(e) => setAutoShut(e.target.checked)}
+                    id="autoShutMonitorToggle"
                   />
-                  <div className="h-6 w-11 rounded-full bg-gray-700 transition peer-checked:bg-cyan-500" />
-                  <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm" />
+                  <label
+                    htmlFor="autoShutMonitorToggle"
+                    className="block h-6 w-11 rounded-full bg-slate-800 peer-checked:bg-cyan-500 transition-colors cursor-pointer"
+                  />
+                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm pointer-events-none" />
                 </div>
-              </label>
+              </div>
 
+              {/* Hard Limit Input */}
               {autoShut && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="block space-y-2 p-4 bg-red-950/20 border border-red-900/50 rounded-lg">
-                    <span className="text-sm text-red-400 font-semibold">Hard Limit (Auto Stop App) ₹</span>
-                    <input
-                      type="number"
-                      value={hardLimit}
-                      onChange={(e) => setHardLimit(Number(e.target.value))}
-                      className="w-full bg-gray-900 border border-red-900/50 rounded-lg p-3 text-red-100 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
-                      placeholder="e.g. 1000"
-                    />
-                    <p className="text-xs text-red-500/70">The app will forcefully shut down if this amount is exceeded.</p>
+                <div className="space-y-2 p-4 bg-rose-950/20 border border-rose-900/50 rounded-xl animate-in fade-in duration-300">
+                  <label className="text-xs font-semibold text-rose-300 flex items-center justify-between">
+                    <span>Hard Limit Spending Ceiling (₹ INR)</span>
+                    <span className="text-[10px] font-mono text-rose-400">HARD STOP</span>
                   </label>
+                  <input
+                    type="number"
+                    value={hardLimit}
+                    onChange={(e) => setHardLimit(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-rose-900/60 focus:border-rose-500 rounded-lg p-3 text-rose-200 text-sm font-mono outline-none transition-all"
+                    placeholder="e.g. 1000"
+                  />
+                  <p className="text-[11px] text-rose-400/80">
+                    Azora will forcefully stop the Azure App Service container once this threshold is breached.
+                  </p>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-          <h3 className="text-sm text-gray-400 uppercase tracking-widest mb-4">Budget Utilization</h3>
-          <BudgetPie budget={budget} cost={cost} size={250} />
-        </div>
-      </div>
-
-      {/* SETTINGS & ACTIONS */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Environment Variables</h3>
-            {envInput && (
-              <span className={`text-xs px-2 py-1 rounded ${!envError ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {!envError ? 'Valid JSON' : 'Invalid JSON'}
-              </span>
-            )}
-          </div>
-          <textarea
-            rows={6}
-            value={envInput}
-            onChange={handleEnvChange}
-            placeholder='{&#10;  "PORT": "8080",&#10;  "NODE_ENV": "production"&#10;}'
-            className="w-full bg-[#0c0c0c] border border-gray-700 rounded-lg p-4 font-mono text-sm text-cyan-300 focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none resize-none"
-          />
-          <div className="mt-4 flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={!!envError || loading} className="bg-white text-black hover:bg-gray-200">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Configuration'}
-            </Button>
+          {/* Card 2: Budget Utilization Pie */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center">
+            <h3 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-4">
+              Real-Time FinOps Utilization
+            </h3>
+            <BudgetPie budget={budget} cost={cost} size={240} />
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">Danger Zone</h3>
-          <div className="space-y-3">
-            <Button onClick={() => setAction("stop")} variant="outline" className="w-full justify-start border-gray-700 hover:bg-gray-800 text-gray-300">
-              <Square className="w-4 h-4 mr-3 text-yellow-500" /> Stop Server
-            </Button>
-            <Button onClick={() => setAction("restart")} variant="outline" className="w-full justify-start border-gray-700 hover:bg-gray-800 text-gray-300">
-              <Play className="w-4 h-4 mr-3 text-blue-500" /> Restart Server
-            </Button>
-            <Button onClick={() => setAction("delete")} variant="outline" className="w-full justify-start border-red-900/50 hover:bg-red-900/20 text-red-400 hover:text-red-300">
-              <Trash2 className="w-4 h-4 mr-3" /> Delete Application
-            </Button>
-          </div>
-        </div>
-      </div>
+        {/* SETTINGS & ACTIONS */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Environment Variables Studio */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-mono uppercase tracking-wider text-slate-200">
+                  Azure App Settings (Env Vars)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Injected directly into Azure container environment
+                </p>
+              </div>
+              {envInput && (
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                    !envError ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                  }`}
+                >
+                  {!envError ? 'VALID JSON' : 'SYNTAX ERROR'}
+                </span>
+              )}
+            </div>
 
-      {/* CONFIRMATION MODAL */}
-      {action && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-gray-900 border border-gray-800 p-6 rounded-xl max-w-sm w-full shadow-2xl">
-            <h3 className="text-xl font-bold mb-2 capitalize text-white">Confirm {action}</h3>
-            <p className="text-gray-400 mb-6">
-              Are you sure you want to {action} this application? {action === 'delete' && 'This cannot be undone.'}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button onClick={() => setAction('')} variant="ghost" className="text-gray-400 hover:text-white">Cancel</Button>
-              <Button onClick={handleAction} disabled={loading} className={action === 'delete' ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-white text-black hover:bg-gray-200'}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
+            <textarea
+              rows={5}
+              value={envInput}
+              onChange={handleEnvChange}
+              placeholder='{\n  "PORT": "8080",\n  "NODE_ENV": "production"\n}'
+              className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl p-3 font-mono text-xs text-cyan-300 outline-none transition-all resize-none"
+            />
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveSettings}
+                disabled={!!envError || loading}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs h-10 px-5 shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                    <span>Syncing Azure Settings...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Save Configuration & Sync Azure</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div>
+              <h3 className="text-sm font-mono uppercase tracking-wider text-slate-200">
+                Container Lifecycle Controls
+              </h3>
+              <p className="text-xs text-slate-400">
+                Execute direct operations on your Azure Web App Service
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <Button
+                onClick={() => setAction('stop')}
+                variant="outline"
+                className="w-full justify-start border-slate-800 hover:bg-slate-800/60 text-amber-300 hover:text-amber-200 text-xs font-mono h-11"
+              >
+                <Square className="w-4 h-4 mr-2.5 text-amber-400" /> Stop Container Service
+              </Button>
+              <Button
+                onClick={() => setAction('restart')}
+                variant="outline"
+                className="w-full justify-start border-slate-800 hover:bg-slate-800/60 text-blue-300 hover:text-blue-200 text-xs font-mono h-11"
+              >
+                <Play className="w-4 h-4 mr-2.5 text-blue-400" /> Restart Web App
+              </Button>
+              <Button
+                onClick={() => setAction('delete')}
+                variant="outline"
+                className="w-full justify-start border-rose-900/40 hover:bg-rose-900/20 text-rose-400 hover:text-rose-300 text-xs font-mono h-11"
+              >
+                <Trash2 className="w-4 h-4 mr-2.5" /> Permanently Delete Workload
               </Button>
             </div>
           </div>
         </div>
-      )}
+
+        {/* CONFIRMATION MODAL */}
+        {action && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                <AlertTriangle className={`w-5 h-5 ${action === 'delete' ? 'text-rose-500' : 'text-amber-400'}`} />
+                <h3 className="text-lg font-bold capitalize">Confirm {action}</h3>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Are you sure you want to {action} this Azure container?{' '}
+                {action === 'delete' && 'This action is irreversible and deletes the cloud resources permanently.'}
+              </p>
+              <div className="flex gap-3 justify-end pt-2">
+                <Button
+                  onClick={() => setAction('')}
+                  variant="ghost"
+                  className="text-xs font-mono text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAction}
+                  disabled={loading}
+                  className={`text-xs font-mono font-bold ${
+                    action === 'delete'
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950'
+                  }`}
+                >
+                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirm Operation'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
