@@ -95,14 +95,17 @@ export async function PUT(req: NextRequest, { params }) {
     if (hardLimit !== undefined) app.hardLimit = hardLimit;
     if (autoShut !== undefined) app.autoStop = autoShut;
 
-    // Trigger Azure Monitor Action Group so Microsoft Azure activates email budget notifications
+    // Trigger Azure Monitor Action Group and Native Azure Budget
     let emailAlertActivated = false;
+    let azureBudgetCreated = false;
+
     if (budget && Number(budget) > 0 && user.email && app.subscriptionId && app.resourceGroup) {
+      let actionGroupId: string | undefined;
       try {
         const { upsertEmailActionGroup } = await import('@/lib/azure/upsertActionGroup');
         const cleanName = (app.AppName || app.name || 'app').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         const actionGroupName = `alert-${cleanName}`;
-        await upsertEmailActionGroup(
+        actionGroupId = await upsertEmailActionGroup(
           accessToken,
           app.subscriptionId,
           app.resourceGroup,
@@ -112,6 +115,53 @@ export async function PUT(req: NextRequest, { params }) {
         emailAlertActivated = true;
       } catch (agErr: any) {
         console.warn("[Azure Monitor Action Group] Warning:", agErr.message);
+      }
+
+      // Also create/update the native Azure Budget under Cost Management > Budgets
+      try {
+        const now = new Date();
+        const startDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
+        const endDate = `${now.getUTCFullYear() + 1}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01T00:00:00Z`;
+        const cleanBudgetName = `budget-${app.resourceGroup.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+
+        const budgetPayload = {
+          properties: {
+            category: "Cost",
+            amount: Number(budget),
+            timeGrain: "Monthly",
+            timePeriod: { startDate, endDate },
+            notifications: {
+              budgetBreach: {
+                enabled: true,
+                operator: "GreaterThan",
+                threshold: 90,
+                contactEmails: [user.email],
+                ...(actionGroupId ? { contactGroups: [actionGroupId] } : {}),
+              },
+            },
+          },
+        };
+
+        const budgetUrl = `https://management.azure.com/subscriptions/${app.subscriptionId}/resourceGroups/${app.resourceGroup}/providers/Microsoft.Consumption/budgets/${cleanBudgetName}?api-version=2023-03-01`;
+
+        const budgetRes = await fetch(budgetUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(budgetPayload),
+        });
+
+        if (budgetRes.ok) {
+          azureBudgetCreated = true;
+          console.log(`[Azure Budget] Created/Updated ${cleanBudgetName} with amount ₹${budget}`);
+        } else {
+          const budgetErr = await budgetRes.text();
+          console.warn("[Azure Budget] API Response:", budgetErr);
+        }
+      } catch (bErr: any) {
+        console.warn("[Azure Budget] Could not create Azure budget:", bErr.message);
       }
     }
 
@@ -157,9 +207,12 @@ export async function PUT(req: NextRequest, { params }) {
 
     await app.save();
 
-    const successMessage = emailAlertActivated
-      ? "Settings saved! Microsoft Azure Action Group email alert has been activated."
-      : "Settings updated successfully.";
+    let successMessage = "Settings updated successfully.";
+    if (azureBudgetCreated) {
+      successMessage = `Settings saved! Azure Budget of ₹${budget} and Action Group alert have been created in your Azure Portal.`;
+    } else if (emailAlertActivated) {
+      successMessage = "Settings saved! Microsoft Azure Action Group email alert has been activated.";
+    }
 
     return NextResponse.json({ success: true, message: successMessage });
 
