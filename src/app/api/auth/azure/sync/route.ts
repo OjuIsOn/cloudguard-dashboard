@@ -88,12 +88,15 @@ export async function POST(req: Request) {
           rgName = idParts[1].split("/")[0];
         }
 
+        const isSiteRunning = site.properties?.state === "Running" || !site.properties?.state;
         await App.findOneAndUpdate(
           { AppName: site.name, subscriptionId, userId: user.id },
           {
             $setOnInsert: {
               name: site.name,
               AppName: site.name,
+              deployStatus: isSiteRunning ? 'live' : 'idle',
+              deployMessage: isSiteRunning ? 'Running live on Azure App Service' : 'App Service provisioned',
             },
             $set: {
               location: site.location,
