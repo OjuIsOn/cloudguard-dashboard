@@ -95,29 +95,73 @@ export async function PUT(req: NextRequest, { params }) {
     if (hardLimit !== undefined) app.hardLimit = hardLimit;
     if (autoShut !== undefined) app.autoStop = autoShut;
 
-    if (env && typeof env === "object") {
-      const updateResult = await updateAppSettings({
-        appName: app.AppName,
-        resourceGroup: app.resourceGroup,
-        subscriptionId: app.subscriptionId,
-        accessToken: accessToken,
-        settings: env,
-      });
+    // Trigger Azure Monitor Action Group so Microsoft Azure activates email budget notifications
+    let emailAlertActivated = false;
+    if (budget && Number(budget) > 0 && user.email && app.subscriptionId && app.resourceGroup) {
+      try {
+        const { upsertEmailActionGroup } = await import('@/lib/azure/upsertActionGroup');
+        const cleanName = (app.AppName || app.name || 'app').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+        const actionGroupName = `alert-${cleanName}`;
+        await upsertEmailActionGroup(
+          accessToken,
+          app.subscriptionId,
+          app.resourceGroup,
+          actionGroupName,
+          user.email
+        );
+        emailAlertActivated = true;
+      } catch (agErr: any) {
+        console.warn("[Azure Monitor Action Group] Warning:", agErr.message);
+      }
+    }
 
-      if (!updateResult.success) {
-        return NextResponse.json({
-          success: false,
-          message: "Failed to update environment variables",
-          error: updateResult.error,
-        }, { status: 500 });
+    if (env && typeof env === "object") {
+      // Only call Azure if the app is already provisioned on Azure
+      if (app.AppName) {
+        const updateResult = await updateAppSettings({
+          appName: app.AppName,
+          resourceGroup: app.resourceGroup,
+          subscriptionId: app.subscriptionId,
+          accessToken: accessToken,
+          settings: env,
+        });
+
+        if (!updateResult.success) {
+          const errMsg = typeof updateResult.error === 'object' ? JSON.stringify(updateResult.error) : updateResult.error;
+          return NextResponse.json({
+            success: false,
+            message: `Failed to update Azure environment variables: ${errMsg || 'Azure rejected settings'}`,
+            error: updateResult.error,
+          }, { status: 500 });
+        }
       }
 
-      app.envVars = { ...app.envVars, ...env };
+      // CRITICAL: Mongoose schema defines envVars as String. Serialize to avoid CastError.
+      let existingEnv: Record<string, string> = {};
+      try {
+        if (app.envVars) {
+          existingEnv = typeof app.envVars === 'string' ? JSON.parse(app.envVars) : app.envVars;
+        }
+      } catch (e) {}
+
+      const mergedEnv = { ...existingEnv, ...env };
+      const sanitizedEnv: Record<string, string> = {};
+      for (const [k, v] of Object.entries(mergedEnv)) {
+        if (v !== undefined && v !== null) {
+          sanitizedEnv[k] = String(v);
+        }
+      }
+
+      app.envVars = JSON.stringify(sanitizedEnv);
     }
 
     await app.save();
 
-    return NextResponse.json({ success: true, message: "Settings updated successfully" });
+    const successMessage = emailAlertActivated
+      ? "Settings saved! Microsoft Azure Action Group email alert has been activated."
+      : "Settings updated successfully.";
+
+    return NextResponse.json({ success: true, message: successMessage });
 
   } catch (error: any) {
     console.error("PUT /monitor error:", error);

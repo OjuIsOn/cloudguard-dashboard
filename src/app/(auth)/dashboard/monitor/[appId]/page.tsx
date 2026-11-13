@@ -148,9 +148,11 @@ export default function MonitorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ budget, hardLimit, autoShut, ...(envError ? {} : { env }) }),
       });
-      if (!res.ok) toast.error('Failed to save settings');
-      else {
-        toast.success('Settings saved');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        toast.error(data.message || 'Failed to save settings');
+      } else {
+        toast.success(data.message || 'Settings saved successfully');
         fetchAppData();
       }
     } catch (err) {
