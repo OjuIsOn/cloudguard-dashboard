@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,15 +10,21 @@ import {
   UploadCloud,
   FileCode,
   Server,
-  Layers,
   CheckCircle2,
   AlertCircle,
   FileArchive,
   Terminal,
   Zap,
-  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const DEPLOY_STAGES = [
+  'Verifying archive structure & folder normalization...',
+  'Streaming payload to secure Vercel Blob store...',
+  'Signing HMAC authorization token for Upstash QStash...',
+  'Dispatching serverless background worker to Azure Kudu...',
+];
 
 export default function PrepareAndDeployPage() {
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -31,9 +37,24 @@ export default function PrepareAndDeployPage() {
   const [envInput, setEnvInput] = useState('');
   const [envError, setEnvError] = useState<string | null>(null);
 
+  // Slow steady stage ticker
+  const [deployStageIndex, setDeployStageIndex] = useState(0);
+
   const params = useParams();
   const appId = params.appId as string;
   const router = useRouter();
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isDeploying) {
+      interval = setInterval(() => {
+        setDeployStageIndex((prev) => (prev < DEPLOY_STAGES.length - 1 ? prev + 1 : prev));
+      }, 1200);
+    } else {
+      setDeployStageIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [isDeploying]);
 
   const handleEnvChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -46,7 +67,7 @@ export default function PrepareAndDeployPage() {
       JSON.parse(val);
       setEnvError(null);
     } catch {
-      setEnvError('Invalid JSON format (must be key-value pairs)');
+      setEnvError('Invalid JSON format (Must be valid key-value pairs)');
     }
   };
 
@@ -60,14 +81,14 @@ export default function PrepareAndDeployPage() {
 
       if (appType === 'react') {
         if (!entries.some((name) => name.endsWith('index.html'))) {
-          newErrors.push('Missing index.html. Ensure you zipped the build output folder (e.g. dist/ or build/), not the source repository.');
+          newErrors.push('Missing index.html. Ensure you zipped your build output folder (e.g. dist/ or build/), not the source files.');
         }
         if (entries.some((name) => name.includes('package.json'))) {
-          newErrors.push('Detected package.json inside React bundle. Please upload only your pre-built static directory (dist/ or build/).');
+          newErrors.push('Detected package.json. Please upload only your pre-built static directory (dist/ or build/).');
         }
       } else if (appType === 'nodejs') {
         if (!entries.some((name) => name.endsWith('package.json'))) {
-          newErrors.push('Missing package.json (Required for Node.js dependency resolution on Azure).');
+          newErrors.push('Missing package.json (Required for Node.js package resolution on Azure).');
         }
         if (!entries.some((name) => name.endsWith('index.js') || name.endsWith('app.js') || name.endsWith('server.js'))) {
           newErrors.push('Missing entry point file (Expected index.js, app.js, or server.js at root).');
@@ -76,7 +97,7 @@ export default function PrepareAndDeployPage() {
 
       setErrors(newErrors);
       return newErrors.length === 0;
-    } catch (e) {
+    } catch {
       setErrors(['Corrupt or unreadable .zip archive.']);
       return false;
     }
@@ -115,10 +136,11 @@ export default function PrepareAndDeployPage() {
       const data = await res.json();
 
       if (data.success) {
+        // Allow slow progression animation to complete
         setTimeout(() => {
           setIsDeploying(false);
           setSuccessUrl(data.message || 'Queued to Serverless Worker pipeline via QStash!');
-        }, 2200);
+        }, 3600);
       } else {
         setIsDeploying(false);
         setErrors([data.message || 'Deployment dispatch failed']);
@@ -131,9 +153,8 @@ export default function PrepareAndDeployPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-cyan-500/10 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute top-12 right-12 w-[350px] h-[250px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none" />
+      {/* Calm ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none animate-pulse-slow" />
 
       <div className="max-w-2xl mx-auto space-y-6 relative z-10">
         {/* Navigation Breadcrumb */}
@@ -145,37 +166,30 @@ export default function PrepareAndDeployPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             BACK TO SERVICE CONFIG
           </Link>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            STAGE 2: ARTIFACT INGESTION
+          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80 bg-cyan-950/30 border border-cyan-500/20 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse-slow" />
+            STEP 2 • UPLOAD ARTIFACT
           </div>
         </div>
 
         {/* Main Panel */}
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-8">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/[0.08] rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <UploadCloud className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">
-                  Upload & Deploy Artifact
-                </h1>
-                <p className="text-sm text-slate-400">
-                  Normalize archive contents and dispatch to asynchronous QStash worker
-                </p>
-              </div>
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-white">
+              Deploy Build Artifact
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Select runtime framework, upload pre-built zip, and dispatch serverless deployment
+            </p>
           </div>
 
-          <div className="space-y-6">
-            {/* 1. APP TYPE SELECTOR */}
-            <div className="space-y-3">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-300">
-                Target Runtime Framework
+          <div className="space-y-5">
+            {/* 1. APP TYPE SELECTOR (Minimal Cards) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                Application Framework
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -184,22 +198,19 @@ export default function PrepareAndDeployPage() {
                     setFileList([]);
                     setZipFile(null);
                   }}
-                  className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
                     appType === 'react'
-                      ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      ? 'border-cyan-500/80 bg-cyan-950/20 text-white'
+                      : 'border-white/[0.08] bg-slate-950/40 hover:border-white/[0.15]'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <FileCode className={`w-5 h-5 ${appType === 'react' ? 'text-cyan-400' : 'text-slate-400'}`} />
-                    {appType === 'react' && <span className="w-2 h-2 rounded-full bg-cyan-400" />}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-xs text-white">React SPA</span>
+                    {appType === 'react' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
                   </div>
-                  <div>
-                    <div className="font-semibold text-sm text-white">React SPA</div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Static build (dist/ or build/) with index.html
-                    </p>
-                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Built folder (dist/ or build/) with index.html
+                  </p>
                 </button>
 
                 <button
@@ -210,80 +221,68 @@ export default function PrepareAndDeployPage() {
                     setFileList([]);
                     setZipFile(null);
                   }}
-                  className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
                     appType === 'nodejs'
-                      ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      ? 'border-blue-500/80 bg-blue-950/20 text-white'
+                      : 'border-white/[0.08] bg-slate-950/40 hover:border-white/[0.15]'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <Server className={`w-5 h-5 ${appType === 'nodejs' ? 'text-blue-400' : 'text-slate-400'}`} />
-                    {appType === 'nodejs' && <span className="w-2 h-2 rounded-full bg-blue-400" />}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-xs text-white">Node.js Server</span>
+                    {appType === 'nodejs' && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
                   </div>
-                  <div>
-                    <div className="font-semibold text-sm text-white">Node.js Server</div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Backend app with package.json & server entry
-                    </p>
-                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Backend with package.json & server entry
+                  </p>
                 </button>
               </div>
             </div>
 
             {/* 2. FILE UPLOADER */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-300">
-                Application Archive (.zip)
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                Zip Archive (.zip)
               </label>
 
-              <label className="relative border-2 border-dashed border-slate-800 hover:border-cyan-500/60 rounded-xl p-6 bg-slate-950/50 flex flex-col items-center justify-center cursor-pointer transition-all group">
+              <label className="relative border border-dashed border-white/[0.12] hover:border-cyan-500/50 rounded-xl p-5 bg-slate-950/40 flex flex-col items-center justify-center cursor-pointer transition-colors group">
                 <input
                   type="file"
                   accept=".zip"
                   onChange={handleFileChange}
                   className="sr-only"
                 />
-                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 group-hover:text-cyan-400 group-hover:border-cyan-500/50 transition-colors mb-3">
-                  <FileArchive className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-full bg-slate-900 border border-white/[0.08] flex items-center justify-center text-slate-400 group-hover:text-cyan-400 transition-colors mb-2">
+                  <FileArchive className="w-5 h-5" />
                 </div>
                 <div className="text-center">
-                  <span className="text-sm font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors">
-                    {zipFile ? zipFile.name : 'Click to select or drag and drop .zip'}
+                  <span className="text-xs font-medium text-slate-200 group-hover:text-cyan-400 transition-colors">
+                    {zipFile ? zipFile.name : 'Click to select or drag and drop .zip archive'}
                   </span>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {zipFile ? `${(zipFile.size / 1024 / 1024).toFixed(2)} MB archive selected` : 'Maximum file size: 50MB'}
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {zipFile ? `${(zipFile.size / 1024 / 1024).toFixed(2)} MB archive selected` : 'Maximum archive size: 50MB'}
                   </p>
                 </div>
               </label>
 
-              {/* File list preview */}
+              {/* Archive verified badge */}
               {fileList.length > 0 && errors.length === 0 && (
-                <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl space-y-1">
-                  <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-1">
-                    <span className="flex items-center gap-1.5 text-cyan-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Archive Verified ({fileList.length} files detected)
-                    </span>
-                  </div>
-                  <div className="max-h-28 overflow-y-auto font-mono text-[11px] text-slate-400 space-y-0.5 pl-2 border-l border-slate-800">
-                    {fileList.slice(0, 15).map((f) => (
-                      <div key={f} className="truncate">{f}</div>
-                    ))}
-                    {fileList.length > 15 && (
-                      <div className="text-slate-500">...and {fileList.length - 15} more files</div>
-                    )}
-                  </div>
+                <div className="p-2.5 bg-slate-950/60 border border-white/[0.06] rounded-lg flex items-center justify-between text-xs font-mono text-slate-400">
+                  <span className="flex items-center gap-1.5 text-cyan-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Archive Verified ({fileList.length} files detected)
+                  </span>
+                  <span className="text-[10px] text-slate-500">Ready to stream</span>
                 </div>
               )}
 
               {/* Validation errors */}
               {errors.length > 0 && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1">
-                  <div className="flex items-center gap-2 text-rose-400 text-xs font-semibold">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    Archive Structure Warning
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg space-y-1">
+                  <div className="flex items-center gap-1.5 text-rose-400 text-xs font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Archive Issue
                   </div>
-                  <ul className="text-xs text-rose-300 list-disc list-inside space-y-0.5">
+                  <ul className="text-[11px] text-rose-300 list-disc list-inside space-y-0.5">
                     {errors.map((err) => (
                       <li key={err}>{err}</li>
                     ))}
@@ -292,16 +291,16 @@ export default function PrepareAndDeployPage() {
               )}
             </div>
 
-            {/* 3. ENVIRONMENT VARIABLES */}
-            <div className="space-y-2">
+            {/* 3. ENVIRONMENT VARIABLES (Minimal) */}
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
                   <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                  Environment Variables (Optional JSON)
+                  Environment Variables (JSON)
                 </label>
                 {envInput && (
                   <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                       !envError ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
                     }`}
                   >
@@ -314,52 +313,64 @@ export default function PrepareAndDeployPage() {
                 placeholder='{"PORT": "8080", "NODE_ENV": "production"}'
                 value={envInput}
                 onChange={handleEnvChange}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 text-slate-200 placeholder:text-slate-600 rounded-lg p-3 text-xs font-mono outline-none transition-all resize-none"
+                className="w-full bg-slate-950 border border-white/[0.08] focus:border-cyan-500/60 text-slate-200 placeholder:text-slate-600 rounded-lg p-2.5 text-xs font-mono outline-none transition-colors resize-none"
               />
-              {envError && <p className="text-xs text-rose-400 font-mono">{envError}</p>}
+              {envError && <p className="text-[11px] text-rose-400 font-mono">{envError}</p>}
             </div>
 
-            {/* 4. DEPLOY BUTTON */}
+            {/* 4. DEPLOY BUTTON & SLOW STEADY ANIMATION */}
             <div className="pt-2">
               {isDeploying ? (
-                <div className="p-6 rounded-xl border border-cyan-500/30 bg-cyan-950/20 flex flex-col items-center justify-center gap-3">
-                  <div className="relative w-12 h-12 animate-spin">
-                    <div className="absolute inset-0 rounded-full border-t-2 border-cyan-400"></div>
-                    <div className="absolute inset-2 rounded-full border-r-2 border-blue-500 animate-pulse"></div>
+                <div className="p-5 rounded-xl border border-cyan-500/20 bg-slate-950/70 space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="relative w-8 h-8 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full border border-cyan-400/40 animate-spin-slow" />
+                      <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse-slow" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-mono text-cyan-300">
+                        {DEPLOY_STAGES[deployStageIndex]}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        Upstash QStash push queue worker dispatch in progress...
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-cyan-400 text-xs font-mono tracking-widest uppercase animate-pulse">
-                    DISPATCHING TO QSTASH WORKER PROTOCOL...
-                  </p>
+
+                  {/* Flowing shimmer progress bar */}
+                  <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden border border-white/[0.06]">
+                    <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 w-full animate-shimmer" />
+                  </div>
                 </div>
               ) : (
                 <Button
                   onClick={handleDeploy}
                   disabled={!zipFile || errors.length > 0 || !!envError}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm h-12 shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold text-xs h-11 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <Zap className="w-4 h-4 fill-current" />
-                  <span>Deploy to Azure via Serverless Pipeline</span>
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  <span>Dispatch Serverless Deployment</span>
                 </Button>
               )}
             </div>
 
             {/* SUCCESS BANNER */}
             {successUrl && (
-              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span>Deployment Dispatched to Queue!</span>
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 space-y-3 animate-fadeIn">
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Deployment Dispatched to Worker Pipeline</span>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Your archive has been safely stored in Vercel Blob and a background execution task has been queued with Upstash QStash. The worker is now normalizing and pushing your build to Azure Kudu.
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Artifact ingested. The background worker is now pushing build files to Azure Kudu. You can follow live container status in the monitor.
                 </p>
-                <div className="pt-1">
+                <div>
                   <Link href={`/dashboard/monitor/${appId}`}>
                     <Button
                       variant="outline"
-                      className="w-full border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 text-xs font-mono h-10 flex items-center justify-center gap-2"
+                      className="w-full border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20 text-xs font-mono h-9 flex items-center justify-center gap-2"
                     >
-                      <span>Watch Live Azure Deployment & Logs</span>
+                      <span>Open Live Monitor & Logs</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   </Link>

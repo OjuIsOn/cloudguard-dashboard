@@ -4,8 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import Lottie from 'lottie-react';
-import loader from '../../../../../../public/animations/loader.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AppType } from '@/models/app';
@@ -14,15 +12,22 @@ import {
   Cloud,
   Cpu,
   Globe,
-  Layers,
-  ShieldCheck,
   CheckCircle2,
   XCircle,
   AlertTriangle,
   Loader2,
   ExternalLink,
   Sparkles,
+  Server,
 } from 'lucide-react';
+
+const AZURE_DEPLOY_PHASES = [
+  'Authorizing Azure Resource Manager credentials...',
+  'Allocating Linux App Service Plan container...',
+  'Configuring container runtime environment...',
+  'Registering global DNS subdomain on Microsoft backbone...',
+  'Synchronizing initial FinOps monitor telemetry...',
+];
 
 export default function DeployStepOnePage() {
   const params = useParams();
@@ -39,6 +44,24 @@ export default function DeployStepOnePage() {
   const [status, setStatus] = useState<'idle' | 'checking' | 'taken' | 'unique' | 'error'>('idle');
   const [hostedURL, setHostedURL] = useState('');
   const [appCreateLoading, setAppCreateLoading] = useState(false);
+
+  // Slow steady phase ticker for Azure provision
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(15);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (appCreateLoading) {
+      interval = setInterval(() => {
+        setPhaseIndex((prev) => (prev < AZURE_DEPLOY_PHASES.length - 1 ? prev + 1 : prev));
+        setProgressPercent((prev) => (prev < 90 ? prev + 18 : prev));
+      }, 4500);
+    } else {
+      setPhaseIndex(0);
+      setProgressPercent(15);
+    }
+    return () => clearInterval(interval);
+  }, [appCreateLoading]);
 
   // App data fetcher
   useEffect(() => {
@@ -117,9 +140,12 @@ export default function DeployStepOnePage() {
       if (!data.success) throw new Error(data.message || 'Web app creation failed');
 
       setHostedURL(data.hostedUrl);
+      setProgressPercent(100);
 
       toast.success('Azure App Service created successfully!');
-      router.push(`/dashboard/deploy/${appId}/prepare`);
+      setTimeout(() => {
+        router.push(`/dashboard/deploy/${appId}/prepare`);
+      }, 1200);
     } catch (err: any) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -134,9 +160,9 @@ export default function DeployStepOnePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-        <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">
-          Querying Azure Workload Metadata...
+        <div className="w-8 h-8 rounded-full border border-cyan-400/40 border-t-cyan-400 animate-spin" />
+        <span className="text-xs font-mono text-slate-400 tracking-wider">
+          Connecting to Azure Workload...
         </span>
       </div>
     );
@@ -157,11 +183,10 @@ export default function DeployStepOnePage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-cyan-500/10 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute top-12 left-12 w-[350px] h-[250px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none" />
+      {/* Calm ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none animate-pulse-slow" />
 
-      <div className="max-w-3xl mx-auto space-y-6 relative z-10">
+      <div className="max-w-2xl mx-auto space-y-6 relative z-10">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
@@ -171,109 +196,81 @@ export default function DeployStepOnePage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             BACK TO DASHBOARD
           </Link>
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            STAGE 1: AZURE PROVISIONING
+          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80 bg-cyan-950/30 border border-cyan-500/20 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse-slow" />
+            STEP 1 • PROVISION COMPUTE
           </div>
         </div>
 
         {/* Main Panel */}
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-8">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/[0.08] rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Cloud className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">
-                  Deploy "{appData.name}"
-                </h1>
-                <p className="text-sm text-slate-400">
-                  Provision your dedicated Azure Linux container instance and configure compute tier
-                </p>
-              </div>
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-white">
+              Provision Azure Compute
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Select compute region, plan tier, and DNS host for <span className="text-cyan-400 font-medium">"{appData.name}"</span>
+            </p>
           </div>
 
-          {/* Target Metadata HUD */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-slate-800 bg-slate-950/60 font-mono text-xs">
+          {/* Target Metadata HUD (Minimal) */}
+          <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl border border-white/[0.06] bg-slate-950/40 text-xs font-mono">
             <div>
-              <span className="text-slate-500 block uppercase tracking-wider text-[10px]">Workload Target</span>
-              <span className="text-slate-200 font-semibold">{appData.name}</span>
+              <span className="text-slate-500 block text-[10px] uppercase">Resource Group</span>
+              <span className="text-slate-200">{appData.resourceGroup}</span>
             </div>
             <div>
-              <span className="text-slate-500 block uppercase tracking-wider text-[10px]">Resource Group</span>
-              <span className="text-cyan-400 font-semibold">{appData.resourceGroup}</span>
-            </div>
-            <div>
-              <span className="text-slate-500 block uppercase tracking-wider text-[10px]">Subscription ID</span>
-              <span className="text-slate-300 truncate block" title={appData.subscriptionId}>
+              <span className="text-slate-500 block text-[10px] uppercase">Subscription</span>
+              <span className="text-slate-300 truncate block">
                 {appData.subscriptionId ? `${appData.subscriptionId.slice(0, 14)}...` : 'Connected'}
               </span>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* AZURE REGION SELECTOR */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                Target Azure Region
+                Azure Deployment Region
               </label>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg p-3 text-slate-200 text-sm font-mono outline-none transition-all"
+                className="w-full bg-slate-950 border border-white/[0.08] focus:border-cyan-500/60 rounded-lg p-2.5 text-slate-200 text-xs font-mono outline-none transition-colors"
               >
                 <option value="indiasouthcentral">South Central India (indiasouthcentral) — Recommended</option>
                 <option value="centralindia">Central India (centralindia - Pune)</option>
                 <option value="southindia">South India (southindia - Chennai)</option>
-                <option value="eastus">East US (eastus — Highest Free Tier Quota)</option>
+                <option value="eastus">East US (eastus — Highest Quota)</option>
                 <option value="westus">West US (westus)</option>
-                <option value="centralus">Central US (centralus)</option>
                 <option value="westeurope">West Europe (westeurope)</option>
-                <option value="southeastasia">Southeast Asia (southeastasia - Singapore)</option>
+                <option value="southeastasia">Southeast Asia (southeastasia)</option>
               </select>
-              <p className="text-[11px] text-slate-500">
-                Tip: If Central India has 0 quota for Linux Free App Service plans, South Central India or East US are completely open.
-              </p>
             </div>
 
             {/* COMPUTE TIER SELECTOR */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
                 <Cpu className="w-3.5 h-3.5 text-blue-400" />
-                App Service Plan (Compute Tier)
+                Compute Tier (App Service Plan)
               </label>
               <select
                 value={selectedPlan}
                 onChange={(e) => setSelectedPlan(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg p-3 text-slate-200 text-sm font-mono outline-none transition-all"
+                className="w-full bg-slate-950 border border-white/[0.08] focus:border-cyan-500/60 rounded-lg p-2.5 text-slate-200 text-xs font-mono outline-none transition-colors"
               >
-                <option value="F1">F1 Free ($0/mo) — 60 CPU min/day, 1GB RAM (Shared Infrastructure)</option>
-                <option value="B1">B1 Basic (~$13/mo) — Dedicated 1 vCPU, 1.75GB RAM, Custom Domain & SSL</option>
+                <option value="F1">F1 Free ($0/mo) — 60 CPU min/day, 1GB RAM (Shared Sandbox)</option>
+                <option value="B1">B1 Basic (~$13/mo) — Dedicated 1 vCPU, 1.75GB RAM, Custom Domain</option>
                 <option value="B2">B2 Basic (~$26/mo) — Dedicated 2 vCPU, 3.5GB RAM</option>
-                <option value="S1">S1 Standard (~$70/mo) — Dedicated 1 vCPU, Auto-Scale & Staging Slots</option>
+                <option value="S1">S1 Standard (~$70/mo) — Dedicated 1 vCPU, Auto-Scale & Staging</option>
               </select>
-              {selectedPlan !== 'F1' ? (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-300 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>
-                    Paid Compute Plan Selected: Azure will bill your subscription. Ensure FinOps auto-shutdown is enabled to prevent unexpected costs.
-                  </span>
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-500">
-                  Default: Zero-cost sandbox tier ideal for portfolio demonstrations and technical interviews.
-                </p>
-              )}
             </div>
 
             {/* LIVE DOMAIN SCANNER */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                Global Azure DNS Subdomain
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                Global Azure Subdomain
               </label>
 
               <div className="relative">
@@ -281,7 +278,7 @@ export default function DeployStepOnePage() {
                   value={webAppName}
                   onChange={(e) => setWebAppName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   placeholder="e.g. cloudguard-api"
-                  className="bg-slate-950 border-slate-800 focus:border-cyan-500 text-slate-100 placeholder:text-slate-600 rounded-lg text-sm h-11 pr-48 font-mono"
+                  className="bg-slate-950 border-white/[0.08] focus:border-cyan-500/60 text-slate-100 placeholder:text-slate-600 rounded-lg text-xs h-10 pr-44 font-mono"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-500 pointer-events-none">
                   .azurewebsites.net
@@ -289,94 +286,106 @@ export default function DeployStepOnePage() {
               </div>
 
               {/* Status Visualizer */}
-              <div className="min-h-[28px] flex items-center">
+              <div className="min-h-[22px] flex items-center">
                 {status === 'idle' && (
-                  <p className="text-xs text-slate-500 font-mono">
-                    Type a globally unique Azure name (3-60 alphanumeric characters)...
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    Enter a globally unique subdomain name...
                   </p>
                 )}
                 {status === 'checking' && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Querying Azure DNS availability across all global regions...</span>
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-cyan-400">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Scanning Azure global DNS...</span>
                   </div>
                 )}
                 {status === 'taken' && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-rose-400">
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Domain name is already taken by another Azure tenant. Try a different name.</span>
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-rose-400">
+                    <XCircle className="w-3 h-3" />
+                    <span>Domain name is already taken. Try another name.</span>
                   </div>
                 )}
                 {status === 'error' && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-400">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Name can only contain lowercase letters, numbers, and hyphens.</span>
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-amber-400">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>Only lowercase letters, numbers, and hyphens allowed.</span>
                   </div>
                 )}
                 {status === 'unique' && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Name is available! Azure will bind https://{webAppName}.azurewebsites.net</span>
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Domain available on Azure global DNS!</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Creation Action */}
-            <div className="pt-4">
+            <div className="pt-2">
               <Button
                 onClick={handleSubmit}
                 disabled={status !== 'unique' || appCreateLoading}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm h-12 shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold text-xs h-11 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
               >
                 {appCreateLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                    <span>Provisioning Azure Web App Service...</span>
+                    <span>Provisioning on Azure...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    <span>Create Azure Service & Proceed to Build Upload</span>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Create Azure Service & Proceed</span>
                   </>
                 )}
               </Button>
             </div>
 
             {error && (
-              <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs font-mono">
-                <strong>Azure ARM Deployment Error:</strong> {error}
+              <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs font-mono">
+                <strong>Azure ARM Error:</strong> {error}
               </div>
             )}
 
-            {hostedURL && (
-              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-mono flex items-center justify-between">
-                <span>Web App Provisioned: {hostedURL}</span>
-                <a
-                  href={hostedURL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-cyan-400 underline hover:text-cyan-300"
-                >
-                  Visit <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
-
+            {/* SLOW STEADY PROGRESSION RADAR (Active during Azure provision) */}
             {appCreateLoading && (
-              <div className="flex flex-col items-center justify-center gap-4 p-6 bg-slate-950/70 border border-slate-800 rounded-xl">
-                <Lottie
-                  animationData={loader}
-                  loop
-                  className="w-36 h-36 drop-shadow-[0_0_20px_#06b6d4]"
-                />
-                <div className="text-center space-y-1">
-                  <p className="text-cyan-400 text-sm font-semibold tracking-wide font-mono animate-pulse">
-                    CREATING AZURE APP SERVICE PLAN & CONTAINER...
+              <div className="p-6 rounded-2xl border border-cyan-500/20 bg-slate-950/70 space-y-5 animate-fadeIn">
+                {/* Dual Concentric Slow Orbit Animation */}
+                <div className="flex items-center justify-center py-4">
+                  <div className="relative w-24 h-24 flex items-center justify-center">
+                    {/* Outer slow orbit ring */}
+                    <div className="absolute inset-0 rounded-full border border-dashed border-cyan-400/40 animate-spin-slow" />
+                    {/* Inner reverse slow orbit ring */}
+                    <div className="absolute inset-2.5 rounded-full border border-cyan-500/20 border-t-cyan-400 animate-spin-reverse-slow" />
+                    {/* Center breathing core */}
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-300 animate-pulse-slow">
+                      <Cloud className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phased Status Label */}
+                <div className="text-center space-y-1.5">
+                  <div className="text-xs font-mono text-cyan-300 flex items-center justify-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse-slow" />
+                    <span className="transition-all duration-500">{AZURE_DEPLOY_PHASES[phaseIndex]}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Azure ARM is allocating compute in {selectedLocation}. Usually completes in 15-25 seconds.
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Communicating with Microsoft Azure Resource Manager in {selectedLocation}
-                  </p>
+                </div>
+
+                {/* Slow Steady Progress Bar */}
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-white/[0.06]">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-1000 ease-out rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                    <span>Phase {phaseIndex + 1} of {AZURE_DEPLOY_PHASES.length}</span>
+                    <span>{progressPercent}%</span>
+                  </div>
                 </div>
               </div>
             )}

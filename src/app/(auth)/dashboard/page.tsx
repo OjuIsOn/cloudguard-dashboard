@@ -217,46 +217,50 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* METRICS STATS CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* METRICS STATS CARDS (Minimal & Clean) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {/* Stat 1: Total Apps */}
-        <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-xs font-medium">Monitored Apps</span>
-            <AppWindow className="w-4 h-4 text-cyan-400" />
+        <div className="p-4 rounded-xl border border-white/[0.08] bg-slate-900/40 backdrop-blur-md">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-xs font-medium">Monitored Workloads</span>
+            <AppWindow className="w-4 h-4 text-cyan-400/80" />
           </div>
-          <div className="text-2xl font-bold text-foreground font-mono">{totalApps}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Active App Services</p>
+          <div className="text-2xl font-bold text-white font-mono">{totalApps}</div>
+          <p className="text-[11px] text-slate-500 mt-0.5">Active Azure Apps</p>
         </div>
 
         {/* Stat 2: Consumed Cost */}
-        <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-xs font-medium">Month-to-Date Spend</span>
-            <IndianRupee className="w-4 h-4 text-emerald-400" />
+        <div className="p-4 rounded-xl border border-white/[0.08] bg-slate-900/40 backdrop-blur-md">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-xs font-medium">Month Spend</span>
+            <IndianRupee className="w-4 h-4 text-emerald-400/80" />
           </div>
-          <div className="text-2xl font-bold text-foreground font-mono">₹{totalCost.toFixed(2)}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Live telemetry meter</p>
+          <div className="text-2xl font-bold text-white font-mono">₹{totalCost.toFixed(2)}</div>
+          <p className="text-[11px] text-slate-500 mt-0.5">Live billing telemetry</p>
         </div>
 
         {/* Stat 3: Total Budget */}
-        <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-xs font-medium">Budget Ceiling</span>
-            <PieIcon className="w-4 h-4 text-blue-400" />
+        <div className="p-4 rounded-xl border border-white/[0.08] bg-slate-900/40 backdrop-blur-md">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-xs font-medium">Budget Limits</span>
+            <PieIcon className="w-4 h-4 text-blue-400/80" />
           </div>
-          <div className="text-2xl font-bold text-foreground font-mono">₹{totalBudget.toFixed(2)}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Allocated limits</p>
+          <div className="text-2xl font-bold text-slate-200 font-mono">₹{totalBudget.toFixed(2)}</div>
+          <p className="text-[11px] text-slate-500 mt-0.5">Allocated soft ceilings</p>
         </div>
 
         {/* Stat 4: Circuit Breakers */}
-        <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-xs font-medium">Auto-Stop Guardrails</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+        <div className="p-4 rounded-xl border border-white/[0.08] bg-slate-900/40 backdrop-blur-md">
+          <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <span className="text-xs font-medium">Circuit Breakers</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-400/80" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 font-mono">{activeAutoStops} Armed</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Circuit breakers active</p>
+          <div className="text-2xl font-bold text-emerald-400 font-mono flex items-center gap-2">
+            <span>{activeAutoStops}</span>
+            <span className="text-xs font-normal text-slate-400">Armed</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow shadow-[0_0_8px_#34d399]" />
+          </div>
+          <p className="text-[11px] text-slate-500 mt-0.5">Auto-shutdown protection</p>
         </div>
       </div>
 

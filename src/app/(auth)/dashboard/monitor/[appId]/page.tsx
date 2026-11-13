@@ -322,22 +322,24 @@ export default function MonitorPage() {
           </div>
         </div>
 
-        {/* DEPLOYMENT PIPELINE STEPPER */}
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+        {/* DEPLOYMENT PIPELINE STEPPER (Minimal & Calm) */}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/[0.08] rounded-2xl p-6 shadow-xl space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-slate-200 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-cyan-400" /> Serverless Deployment Lifecycle
+            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-200 flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-cyan-400" /> Serverless Deployment Lifecycle
             </h3>
             <span className="text-[10px] font-mono text-slate-500">
-              Upstash QStash → Vercel Blob → Kudu REST
+              QStash → Vercel Blob → Kudu REST
             </span>
           </div>
 
           <div className="relative py-4 px-2">
             {/* Background connection bar */}
-            <div className="absolute left-6 right-6 top-8 h-0.5 bg-slate-800 -z-0" />
+            <div className="absolute left-6 right-6 top-8 h-0.5 bg-slate-800/80 -z-0" />
             <div
-              className="absolute left-6 top-8 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-700 -z-0"
+              className={`absolute left-6 top-8 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-1000 ease-out -z-0 ${
+                deployStatus === 'queued' || deployStatus === 'deploying' ? 'animate-shimmer' : ''
+              }`}
               style={{
                 width:
                   deployStatus === 'queued'
@@ -354,29 +356,29 @@ export default function MonitorPage() {
               {/* Step 1: Uploaded */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
                     deployStatus !== 'idle'
-                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
-                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                      ? 'border-cyan-400/80 bg-cyan-950/80 text-cyan-300'
+                      : 'border-white/[0.08] bg-slate-900 text-slate-600'
                   }`}
                 >
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-mono text-slate-300">Blob Ingested</span>
+                <span className="text-xs font-mono text-slate-300">Blob Stored</span>
               </div>
 
               {/* Step 2: Queued */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
                     deployStatus === 'queued'
-                      ? 'border-blue-400 bg-blue-950 text-blue-300 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)]'
+                      ? 'border-blue-400 bg-blue-950 text-blue-300 animate-pulse-slow'
                       : deployStatus === 'deploying' || deployStatus === 'live'
-                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
-                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                      ? 'border-cyan-400/80 bg-cyan-950/80 text-cyan-300'
+                      : 'border-white/[0.08] bg-slate-900 text-slate-600'
                   }`}
                 >
-                  {deployStatus === 'queued' ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {deployStatus === 'queued' ? <Clock className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
                 </div>
                 <span className="text-xs font-mono text-slate-300">QStash Queue</span>
               </div>
@@ -384,41 +386,41 @@ export default function MonitorPage() {
               {/* Step 3: Provisioning */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
                     deployStatus === 'deploying'
-                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.8)]'
+                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 animate-pulse-slow'
                       : deployStatus === 'live'
-                      ? 'border-cyan-400 bg-cyan-950 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+                      ? 'border-cyan-400/80 bg-cyan-950/80 text-cyan-300'
                       : deployStatus === 'failed'
-                      ? 'border-rose-500 bg-rose-950 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.6)]'
-                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                      ? 'border-rose-500 bg-rose-950 text-rose-400'
+                      : 'border-white/[0.08] bg-slate-900 text-slate-600'
                   }`}
                 >
                   {deployStatus === 'deploying' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : deployStatus === 'failed' ? (
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-3.5 h-3.5" />
                   ) : (
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-3.5 h-3.5" />
                   )}
                 </div>
-                <span className="text-xs font-mono text-slate-300">Azure Kudu Push</span>
+                <span className="text-xs font-mono text-slate-300">Kudu Push</span>
               </div>
 
               {/* Step 4: Live */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${
                     deployStatus === 'live'
-                      ? 'border-emerald-400 bg-emerald-950 text-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.8)]'
+                      ? 'border-emerald-400 bg-emerald-950 text-emerald-300'
                       : deployStatus === 'failed'
                       ? 'border-rose-500 bg-rose-950 text-rose-400'
-                      : 'border-slate-800 bg-slate-900 text-slate-600'
+                      : 'border-white/[0.08] bg-slate-900 text-slate-600'
                   }`}
                 >
-                  {deployStatus === 'failed' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                  {deployStatus === 'failed' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
                 </div>
-                <span className="text-xs font-mono text-slate-300">Healthy</span>
+                <span className="text-xs font-mono text-slate-300">Live</span>
               </div>
             </div>
           </div>
